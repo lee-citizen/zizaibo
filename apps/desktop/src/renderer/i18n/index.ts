@@ -1,15 +1,15 @@
 import { createI18n } from 'vue-i18n'
 
 export function loadLanguages() {
-  const context: any = import.meta.glob('./languages/*.ts', { eager: true })
+  const context: any = import.meta.glob('./languages/*.json', { eager: true })
 
   const languages: any = {}
 
   let langs = Object.keys(context)
   for (let key of langs) {
     if (key === './index.ts') return
-    let lang = context[key].lang
-    let name = key.replace(/(\.\/languages\/|\.ts)/g, '')
+    let lang = context[key]
+    let name = key.replace(/(\.\/languages\/|\.json)/g, '')
     languages[name] = lang
   }
 
@@ -22,8 +22,8 @@ export function i18nt(key: string) {
 
 export const i18n = createI18n({
   legacy: false,
-  locale: 'zh-cn',
-  fallbackLocale: 'zh-cn',
+  locale: 'zh-CN',
+  fallbackLocale: 'zh-CN',
   messages: loadLanguages(),
 })
 

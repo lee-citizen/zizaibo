@@ -1,0 +1,76 @@
+
+// 引入 Sass 官方内置的 map 模块
+@use "sass:map";
+
+// ==========================================
+// 1. 基础色阶定义 (Color Palette)
+// ==========================================
+$primary-50:  #d1ffff;
+$primary-100: #aad9f2;
+$primary-200: #85b3cb;
+$primary-300: #618ea5;
+$primary-400: #3f6b81; // 对应你的 $color-primary
+$primary-500: #2E5A6F;
+$primary-600: #134155;
+$primary-700: #002a3c;
+$primary-800: #001325;
+$primary-900: #000515;
+$primary-950: #000008;
+
+$color-primary: $primary-400 !default;
+
+// ==========================================
+// 2. 语义化变量映射 (Semantic Colors)
+// ==========================================
+$theme-colors: (
+  "primary":        $primary-400,
+  "primary-hover":  $primary-500,
+  "primary-light":  $primary-100,
+  "primary-dark":   $primary-600,
+  "background":     $primary-50,
+  "surface":        #ffffff,
+  "text-main":      $primary-900,
+  "text-muted":     $primary-300,
+  "border":         $primary-200,
+);
+
+// 获取语义化颜色的便捷函数（使用 map.has-key 和 map.get）
+@function theme-color($key) {
+  @if map.has-key($theme-colors, $key) {
+    @return map.get($theme-colors, $key);
+  }
+  @warn "Unknown `#{$key}` in `$theme-colors`.";
+  @return null;
+}
+
+// ==========================================
+// 3. 实用 Mixins 与 工具类
+// ==========================================
+
+@mixin theme-button($type: "primary") {
+  @if $type == "primary" {
+    background-color: theme-color("primary");
+    color: #ffffff;
+    border: 1px solid theme-color("primary");
+    
+    &:hover {
+      background-color: theme-color("primary-hover");
+      border-color: theme-color("primary-hover");
+    }
+  } @else if $type == "outline" {
+    background-color: transparent;
+    color: theme-color("primary");
+    border: 1px solid theme-color("primary");
+    
+    &:hover {
+      background-color: theme-color("primary-light");
+    }
+  }
+}
+
+@mixin theme-card {
+  background-color: theme-color("surface");
+  border: 1px solid theme-color("border");
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba($primary-800, 0.08);
+}

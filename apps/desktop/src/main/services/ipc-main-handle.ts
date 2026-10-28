@@ -7,12 +7,20 @@ import type { IpcImpl, AppContract } from 'ipc-contract'
 import { webContentSend } from './web-content-send'
 import { IsUseSysTitle } from '@main/config/const'
 import { otherWindowConfig } from '@main/config/windows-config'
+import { openGameWindow } from './game-window'
 import Store from 'electron-store'
 
 const store = new Store()
 const allUpdater = new Update()
 
 export const appIpcHandlers: IpcImpl<AppContract> = {
+  openGameWindow: (_event, args) => {
+    openGameWindow(args.url, args.title, {
+      mute: args.mute,
+      volume: args.volume,
+    })
+  },
+
   startDownload: (event, downloadUrl) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window) return

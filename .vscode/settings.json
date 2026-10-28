@@ -23,11 +23,21 @@
   },
   "[vue]": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "oxc.vscode-oxc"
+    "editor.defaultFormatter": "Vue.volar"
   },
   "files.associations": {
     "*.env": "env",
     "*.env.*": "env"
   },
-  "i18n-ally.localesPaths": ["src/renderer/i18n", "src/renderer/i18n/languages"]
+  
+  "i18n-ally.localesPaths": ["apps/desktop/src/renderer/i18n/languages"],
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.sortKeys": true,
+  "i18n-ally.namespace": false,
+  "i18n-ally.enabledParsers": ["ts", "js","json"], 
+  "i18n-ally.sourceLanguage": "zh-CN",
+  "i18n-ally.displayLanguage": "zh-CN",
+  "i18n-ally.translate.engines": ["deepl", "google"],
+  "i18n-ally.extract.keygenStyle": "camelCase",
+  "i18n-ally.enabledFrameworks": ["vue"]
 }

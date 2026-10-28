@@ -64,12 +64,7 @@
           <el-button type="primary" round @click="browserDemo">
             {{ t('buttons.browser') }}
           </el-button>
-          <el-button
-            v-if="showInMyComputer !== 0"
-            type="primary"
-            round
-            @click="setShowOnMyComputer"
-          >
+          <el-button v-if="showInMyComputer !== 0" type="primary" round @click="setShowOnMyComputer">
             {{
               t(
                 showInMyComputer === 1
@@ -81,7 +76,7 @@
           <el-card style="margin-top: 50px">
 
             <el-form-item :label="t('store.input.labels')">
-              <el-input style="width: 200px" :placeholder="t('store.input.placeholder')" v-model="storeInputValue"/>
+              <el-input style="width: 200px" :placeholder="t('store.input.placeholder')" v-model="storeInputValue" />
             </el-form-item>
 
             <el-form-item :label="t('store.operate')" label-position="top">
@@ -104,33 +99,15 @@
           </el-card>
         </div>
         <div class="doc">
-          <el-pagination
-            :current-page="elCPage"
-            :page-sizes="[100, 200, 300, 400]"
-            :page-size="elPageSize"
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="400"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          ></el-pagination>
+          <el-pagination :current-page="elCPage" :page-sizes="[100, 200, 300, 400]" :page-size="elPageSize"
+            layout="total, sizes, prev, pager, next, jumper" :total="400" @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"></el-pagination>
         </div>
       </div>
     </main>
-    <el-dialog
-      title="进度"
-      v-model="dialogVisible"
-      :before-close="handleClose"
-      center
-      width="14%"
-      top="45vh"
-    >
+    <el-dialog title="进度" v-model="dialogVisible" :before-close="handleClose" center width="14%" top="45vh">
       <div class="conten">
-        <el-progress
-          type="dashboard"
-          :percentage="percentage"
-          :color="colors"
-          :status="progressStaus"
-        ></el-progress>
+        <el-progress type="dashboard" :percentage="percentage" :color="colors" :status="progressStaus"></el-progress>
       </div>
     </el-dialog>
     <!-- <update-progress v-model="showForcedUpdate" /> -->
@@ -190,7 +167,7 @@ ipc.app.getStaticPath().then((res) => {
 })
 
 function changeLanguage() {
-  setLanguage(i18n.global.locale.value === 'zh-cn' ? 'en' : 'zh-cn')
+  setLanguage(i18n.global.locale.value === 'zh-CN' ? 'en' : 'zh-CN')
 }
 
 function printDemo() {
@@ -247,7 +224,7 @@ function StartServer() {
   })
 }
 // 获取electron方法
-function open() {}
+function open() { }
 function CheckUpdate(data) {
   switch (data) {
     case 'one':
@@ -285,7 +262,7 @@ function openPreloadWindow() {
     t('home.openPreloadWindowError.title'),
     {
       confirmButtonText: t('home.openPreloadWindowError.confirm'),
-      callback: (action) => {},
+      callback: (action) => { },
     },
   )
 }
@@ -422,7 +399,7 @@ const deleteStoreValue = () => {
 }
 </script>
 
-<style>
+<style scoped>
 * {
   box-sizing: border-box;
   margin: 0;
@@ -448,7 +425,7 @@ main {
   justify-content: space-between;
 }
 
-main > div {
+main>div {
   flex-basis: 50%;
 }
 
@@ -489,7 +466,7 @@ main > div {
   margin-right: 10px;
 }
 
-.doc .el-button + .el-button {
+.doc .el-button+.el-button {
   margin-left: 0;
 }
 

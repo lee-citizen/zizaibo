@@ -1,5 +1,5 @@
 import enLocale from 'element-plus/dist/locale/en.min'
-export const lang = {
+export default {
   welcome: 'Welcome use the framework',
   buttonTips: 'You can click buttons to experience',
   waitDataLoading: 'Wait data loading',

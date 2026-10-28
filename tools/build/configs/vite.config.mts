@@ -3,7 +3,7 @@ import { defineConfig } from "vite-plus";
 import vuePlugin from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
 import { getConfig } from "../shared/env.ts";
-
+import tailwindcss from '@tailwindcss/vite'
 // 应用包根目录（tools/build 的上两级）
 const appRoot = join(import.meta.dirname, "..", "..", "..", "apps", "desktop");
 const config = getConfig();
@@ -11,6 +11,7 @@ const config = getConfig();
 const root = join(appRoot, "src/renderer");
 
 export default defineConfig({
+
   mode: config && config.NODE_ENV,
   root,
   envDir: join(appRoot, "env"),
@@ -24,7 +25,14 @@ export default defineConfig({
       "@store": join(root, "/store/modules"),
     },
   },
-
+  css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "@renderer/styles/variables.scss";`,
+        silenceDeprecations: ["import"]
+      }
+    }
+  },
   base: "./",
   build: {
     outDir:
@@ -38,6 +46,6 @@ export default defineConfig({
     // 刻意不配置 external，误引入会直接构建报错
   },
   server: {},
-  plugins: [vueJsx(), vuePlugin()],
+  plugins: [vueJsx(), vuePlugin(), tailwindcss()],
   optimizeDeps: {},
 });

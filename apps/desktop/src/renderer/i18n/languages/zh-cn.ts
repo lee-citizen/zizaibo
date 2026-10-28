@@ -1,5 +1,5 @@
 import zhLocale from 'element-plus/dist/locale/zh-cn.min'
-export const lang = {
+export default{
   welcome: '欢迎进入本框架',
   buttonTips: '您可以点击的按钮测试功能',
   waitDataLoading: '等待数据读取',

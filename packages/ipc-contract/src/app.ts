@@ -40,6 +40,8 @@ export interface AppContract {
   setStoreValue(args: SetStoreValueArgs): void
   getStoreValue(args: StoreKeyArgs): unknown
   deleteStoreValue(args: StoreKeyArgs): void
+  /** 打开游戏窗口（手机尺寸 BrowserWindow） */
+  openGameWindow(args: OpenGameWindowArgs): void
 }
 
 /** openErrorbox 的载荷 */
@@ -69,4 +71,16 @@ export interface SetStoreValueArgs {
 /** getStoreValue / deleteStoreValue 的载荷 */
 export interface StoreKeyArgs {
   key: string
+}
+
+/** openGameWindow 的载荷 */
+export interface OpenGameWindowArgs {
+  /** 游戏 URL */
+  url: string
+  /** 窗口标题 */
+  title?: string
+  /** 是否静音 */
+  mute?: boolean
+  /** 音量 0~1，默认 1 */
+  volume?: number
 }

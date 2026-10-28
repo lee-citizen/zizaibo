@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import './styles/index.scss'
+import './styles/tailwind.css' // 引入 Tailwind
 import './permission'
 import App from './App.vue'
 import router from './router'

@@ -31,7 +31,7 @@ ipc.app.isUseSysTitle().then((res) => {
   width: 100%;
   height: 30px;
   line-height: 30px;
-  background-color: #ffffff;
+  background-color: theme-color("primary");
   display: flex;
   -webkit-app-region: drag;
   position: fixed;

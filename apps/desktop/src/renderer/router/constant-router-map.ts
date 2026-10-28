@@ -6,14 +6,14 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@renderer/views/404.vue'),
   },
   {
-    path: '/',
-    name: '总览',
-    component: () => import('@renderer/views/landing-page/LandingPage.vue'),
+    path: '/index',
+    name: '直播主页',
+    component: () => import('@renderer/views/index/index.vue'),
   },
   {
-    path: '/Print',
-    name: '打印',
-    component: () => import('@renderer/views/Print.vue'),
+    path: '/games',
+    name: '游戏大厅',
+    component: () => import('@renderer/views/games/games.vue'),
   },
   {
     path: '/Browser',

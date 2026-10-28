@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* 让 Tailwind 扫描 renderer 目录下的所有源文件 */
+@source "../**/*.{vue,ts,js,html}";
