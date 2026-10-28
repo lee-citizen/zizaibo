@@ -42,6 +42,11 @@ export interface AppContract {
   deleteStoreValue(args: StoreKeyArgs): void
   /** 打开游戏窗口（手机尺寸 BrowserWindow） */
   openGameWindow(args: OpenGameWindowArgs): void
+  /** 获取当前系统默认音频输出设备名 */
+  getDefaultAudioDevice(): string | null
+  /** 打开系统音量合成器/声音设置 */
+  openSystemMixer(): void
+
 }
 
 /** openErrorbox 的载荷 */

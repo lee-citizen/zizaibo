@@ -7,15 +7,37 @@
                 <p class="text-sm text-gray-500 mt-1">共 {{ filteredGames.length }} / {{ games.length }} 款小游戏</p>
             </div>
 
-            <!-- 搜索框 -->
-            <el-input v-model="keyword" placeholder="搜索游戏名称..." clearable class="w-72" prefix-icon="Search"
-                size="default" />
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
+                <!-- 搜索框 -->
+                <el-input v-model="keyword" placeholder="搜索游戏名称..." clearable class="w-72" prefix-icon="Search"
+                    size="default" />
+            </div>
 
+            <!-- 🔊 播放设备（直接展示） -->
+            <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                <p class="text-xs text-gray-400 mb-3">🔊 播放设备 · 系统默认已高亮</p>
+                <div v-if="audioDevices.length" class="flex flex-wrap gap-2">
+                    <el-tag v-for="device in audioDevices" :key="device.deviceId"
+                        :type="device.isDefault ? 'warning' : 'info'" :effect="device.isDefault ? 'dark' : 'plain'"
+                        size="large" round :closable="false">
+                        <span class="flex items-center gap-1">
+                            <span v-if="device.isDefault">🔊</span>
+                            <span v-else>🔈</span>
+                            {{ device.label || '未知设备' }}
+                            <span v-if="device.isDefault" class="ml-1 opacity-80">· 默认</span>
+                        </span>
+                    </el-tag>
+                </div>
+                <div v-else class="text-center py-4 text-gray-400 text-sm">
+                    <div v-if="audioLoading">🔄 加载播放设备...</div>
+                    <div v-else>未检测到音频输出设备</div>
+                </div>
+            </div>
 
+            <div class="flex items-center gap-4 flex-wrap">
                 <!-- 静音开关 -->
                 <el-checkbox v-model="settings.mute">
-                    <span class="text-sm text-gray-500">🔇 游戏静音（游戏声压过麦克风、平台提示无法识别语音时勾这个）</span>
+                    <span class="text-sm text-gray-500">🔇 游戏静音</span>
                 </el-checkbox>
 
                 <!-- 音量滑块 -->
@@ -126,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 
 interface Game {
     id: string
@@ -141,6 +163,12 @@ interface Game {
 interface GameSettings {
     mute: boolean
     volume: number // 0~100
+}
+
+interface AudioDeviceInfo {
+    deviceId: string
+    label: string
+    isDefault: boolean
 }
 
 const STORAGE_KEY = 'game-settings'
@@ -190,7 +218,7 @@ function openGame(game: Game) {
         url: game.url,
         title: game.name,
         mute: settings.value.mute,
-        volume: settings.value.volume / 100, // 转 0~1
+        volume: settings.value.volume / 100,
     })
 }
 
@@ -209,7 +237,80 @@ async function loadGames() {
     }
 }
 
-onMounted(loadGames)
+// ============ 🔊 播放设备相关 ============
+const audioDevices = ref<AudioDeviceInfo[]>([])
+const audioLoading = ref(false)
+
+
+function openSystemMixer() {
+    window.ipcBridge.invoke('app:openSystemMixer')
+}
+
+async function loadAudioDevices() {
+    audioLoading.value = true
+    try {
+        // 1. 主进程：拿系统默认输出设备名
+        const defaultName: string | null = await window.ipcBridge.invoke('app:getDefaultAudioDevice')
+        console.log('[audio] 系统默认设备名:', defaultName)
+
+        // 2. 先触发一次 getUserMedia，让 enumerateDevices 能拿到 label
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            stream.getTracks().forEach(t => t.stop())
+        } catch { }
+
+        const devices = await navigator.mediaDevices.enumerateDevices()
+
+        // 3. 过滤 + 去重
+        const seen = new Set<string>()  // ← 补上这个！
+        const outputs = devices
+            .filter(d => d.kind === 'audiooutput')
+            .filter(d => {
+                // 过滤 Web API 自动生成的 "Default - xxx" 虚拟节点
+                if (/^default\s*[-—]/i.test(d.label || '')) return false
+                // 去重
+                const key = (d.label || d.deviceId).toLowerCase()
+                if (seen.has(key)) return false
+                seen.add(key)
+                return true
+            })
+
+        console.log('[audio] Web 枚举到的输出设备:', outputs.map(d => d.label))
+
+        // 4. 智能匹配：去掉括号后缀 + 去空格
+        const normalize = (s: string) =>
+            s.toLowerCase()
+                .replace(/\s*$[^)]*$/g, '')  // ← 修正正则！
+                .replace(/\s+/g, '')
+
+        const normalizedDefault = defaultName ? normalize(defaultName) : ''
+
+        audioDevices.value = outputs.map(d => {
+            const label = d.label || d.deviceId
+            const normalizedLabel = normalize(label)
+            const isDefault = !!defaultName && (
+                label.toLowerCase() === defaultName.toLowerCase() ||
+                normalizedLabel === normalizedDefault ||
+                normalizedLabel.includes(normalizedDefault) ||
+                normalizedDefault.includes(normalizedLabel)
+            )
+            return { deviceId: d.deviceId, label, isDefault }
+        })
+
+        console.log('[audio] 最终设备列表:', audioDevices.value)
+    } catch (e) {
+        console.error('加载音频设备失败:', e)
+    } finally {
+        audioLoading.value = false
+    }
+}
+
+
+
+onMounted(() => {
+    loadGames()
+    loadAudioDevices()  // 加这行，页面打开就加载
+})
 </script>
 
 <style lang="scss" scoped>
