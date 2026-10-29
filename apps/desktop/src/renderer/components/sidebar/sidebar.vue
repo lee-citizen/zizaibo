@@ -50,14 +50,14 @@ const route = useRoute()
 const router = useRouter()
 
 const navList = ref([
-    { name: '直播主页', path: '/index' },
+    { name: '直播主页', path: '/' },
     { name: '连接直播', path: '/connect' },
     { name: '游戏大厅', path: '/games' },
     { name: '背景音乐', path: '/music' },
     { name: '自动报时', path: '/clock' },
     { name: '智能朗读', path: '/speech' },
     { name: '卡密激活', path: '/key' },
-    { name: '系统设置', path: '/setting' },
+    { name: '系统设置', path: '/settings' },
 ])
 
 const mainList = computed(() => navList.value.slice(0, navList.value.length - 1))

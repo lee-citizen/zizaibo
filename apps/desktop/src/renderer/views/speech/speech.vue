@@ -1,0 +1,8 @@
+<template>
+    朗读
+</template>
+
+<script setup lang="ts">
+</script>
+
+<style lang="scss" scoped></style>

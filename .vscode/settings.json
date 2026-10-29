@@ -19,7 +19,8 @@
     "editor.formatOnSave": true
   },
   "[typescript]": {
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[vue]": {
     "editor.formatOnSave": true,

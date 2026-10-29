@@ -1,5 +1,6 @@
 <template>
-    <footer class="h-10 px-4  border-t  flex items-center justify-between text-xs text-slate-400">
+
+    <nav class="h-10 px-4  border-t  flex items-center justify-between text-xs text-slate-400 ">
         <!-- 左侧状态 -->
         <div class="flex items-center gap-4">
             <!-- 直播连接状态 -->
@@ -29,7 +30,7 @@
         <el-button size="small">
             <span>隐藏直播画面窗口</span>
         </el-button>
-    </footer>
+    </nav>
 </template>
 
 <script setup lang="ts">

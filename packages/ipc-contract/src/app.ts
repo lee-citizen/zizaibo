@@ -46,6 +46,8 @@ export interface AppContract {
   getDefaultAudioDevice(): string | null
   /** 打开系统音量合成器/声音设置 */
   openSystemMixer(): void
+  /** 获取本机机器码（基于 app.getMachineId 的硬件指纹） */
+  getMachineId(): string
 
 }
 

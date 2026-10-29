@@ -32,8 +32,9 @@ onMounted(() => {
 }
 
 .layout {
-  height: calc(100% - 0px);
+  height: 100%;
   padding-top: 30px;
   background: #F7F9F9;
+  overflow: hidden;
 }
 </style>

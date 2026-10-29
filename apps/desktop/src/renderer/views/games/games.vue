@@ -1,7 +1,7 @@
 <template>
     <div class="h-full overflow-y-auto bg-gray-50">
         <!-- 顶部标题 + 搜索 + 设置 -->
-        <div class="px-8 pt-8 pb-4 space-y-4">
+        <div class="px-8 pt-4 pb-4 space-y-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">游戏大厅</h1>
                 <p class="text-sm text-gray-500 mt-1">共 {{ filteredGames.length }} / {{ games.length }} 款小游戏</p>
@@ -50,7 +50,7 @@
         </div>
 
         <!-- 游戏网格 -->
-        <div v-if="filteredGames.length" class="px-8 pb-8 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-5">
+        <div v-if="filteredGames.length" class="px-8 pb-18 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-5">
             <div v-for="game in filteredGames" :key="game.id"
                 class="game-card group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-blue-200 hover:-translate-y-1"
                 @click="showTips(game)">

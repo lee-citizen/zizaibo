@@ -81,6 +81,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@element-plus/icons-vue':
+        specifier: ^2.3.2
+        version: 2.3.2(vue@3.5.43(typescript@7.0.2))
       adm-zip:
         specifier: ^0.6.1
         version: 0.6.1

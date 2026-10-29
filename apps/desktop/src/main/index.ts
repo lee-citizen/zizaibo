@@ -6,6 +6,8 @@ import { useDisableButton } from './hooks/disable-button-hook'
 import { useProcessException } from '@main/hooks/exception-hook'
 import { useMenu } from '@main/hooks/menu-hook'
 import { useMainDefaultIpc } from './services/ipc-main'
+import { getMachineId } from './services/machine-id'
+
 
 function onAppReady() {
   const { disableF12 } = useDisableButton()
@@ -16,6 +18,8 @@ function onAppReady() {
   renderProcessGone()
   defaultIpc()
   createMenu()
+  getMachineId() // 预热：应用启动即生成机器码并缓存
+
   new InitWindow().initWindow()
   if (process.env.NODE_ENV === 'development') {
     const {

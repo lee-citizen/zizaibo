@@ -9,10 +9,14 @@ import { IsUseSysTitle } from '@main/config/const'
 import { otherWindowConfig } from '@main/config/windows-config'
 import { openGameWindow } from './game-window'
 import { getDefaultOutputDeviceName, openSystemMixer } from './audio-devices'
+import { getMachineId } from './machine-id'
+
 import Store from 'electron-store'
 
 const store = new Store()
 const allUpdater = new Update()
+
+
 
 export const appIpcHandlers: IpcImpl<AppContract> = {
 
@@ -27,6 +31,9 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   openSystemMixer: () => {
     openSystemMixer()
+  },
+  getMachineId: () => {
+    return getMachineId()
   },
 
 
