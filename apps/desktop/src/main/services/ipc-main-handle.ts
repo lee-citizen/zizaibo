@@ -1,136 +1,155 @@
-import { dialog, BrowserWindow, app } from 'electron'
-import { winURL, staticPaths } from '../config/static-path'
-import DownloadFile from '../services/download-file'
-import Update from '../services/check-update'
-import config from '@config/index'
-import type { IpcImpl, AppContract } from 'ipc-contract'
-import { webContentSend } from './web-content-send'
-import { IsUseSysTitle } from '@main/config/const'
-import { otherWindowConfig } from '@main/config/windows-config'
-import { openGameWindow } from './game-window'
-import { getDefaultOutputDeviceName, openSystemMixer } from './audio-devices'
-import { getMachineId } from './machine-id'
+import { dialog, BrowserWindow, app } from "electron";
+import { winURL, staticPaths } from "../config/static-path";
+import DownloadFile from "../services/download-file";
+import Update from "../services/check-update";
+import config from "@config/index";
+import type { IpcImpl, AppContract } from "ipc-contract";
+import { webContentSend } from "./web-content-send";
+import { IsUseSysTitle } from "@main/config/const";
+import { otherWindowConfig } from "@main/config/windows-config";
+import { openGameWindow } from "./game-window";
+import { getDefaultOutputDeviceName, openSystemMixer } from "./audio-devices";
+import { getMachineId } from "./machine-id";
+import {
+  addUserMusic,
+  deleteUserMusic,
+  listUserMusic,
+  getMusicMeta,
+  setMusicMeta,
+} from "./user-music";
 
-import Store from 'electron-store'
+import Store from "electron-store";
 
-const store = new Store()
-const allUpdater = new Update()
-
-
+const store = new Store();
+const allUpdater = new Update();
 
 export const appIpcHandlers: IpcImpl<AppContract> = {
-
   openGameWindow: (_event, args) => {
     openGameWindow(args.url, args.title, {
       mute: args.mute,
       volume: args.volume,
-    })
+    });
   },
   getDefaultAudioDevice: () => {
-    return getDefaultOutputDeviceName()
+    return getDefaultOutputDeviceName();
   },
   openSystemMixer: () => {
-    openSystemMixer()
+    openSystemMixer();
   },
   getMachineId: () => {
-    return getMachineId()
+    return getMachineId();
   },
 
+  addUserMusic: async () => {
+    return addUserMusic();
+  },
+  deleteUserMusic: async (_event, args) => {
+    await deleteUserMusic(args.fileName);
+  },
+  listUserMusic: async () => {
+    return listUserMusic();
+  },
+  getMusicMeta: () => {
+    return getMusicMeta();
+  },
+  setMusicMeta: (_event, args) => {
+    setMusicMeta(args.meta);
+  },
 
   startDownload: (event, downloadUrl) => {
-    const window = BrowserWindow.fromWebContents(event.sender)
-    if (!window) return
-    new DownloadFile(window, downloadUrl).start()
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return;
+    new DownloadFile(window, downloadUrl).start();
   },
   startServer: async () => {
-    dialog.showErrorBox('error', 'API is obsolete')
-    return 'API is obsolete'
+    dialog.showErrorBox("error", "API is obsolete");
+    return "API is obsolete";
   },
   stopServer: async () => {
-    dialog.showErrorBox('error', 'API is obsolete')
-    return 'API is obsolete'
+    dialog.showErrorBox("error", "API is obsolete");
+    return "API is obsolete";
   },
   getStaticPath: () => staticPaths,
   openWin: (_event, arg) => {
     const childWin = new BrowserWindow({
-      titleBarStyle: IsUseSysTitle ? 'default' : 'hidden',
+      titleBarStyle: IsUseSysTitle ? "default" : "hidden",
       ...Object.assign(otherWindowConfig, {}),
-    })
+    });
     // 开发模式下自动开启devtools
-    if (process.env.NODE_ENV === 'development') {
-      childWin.webContents.openDevTools({ mode: 'undocked', activate: true })
+    if (process.env.NODE_ENV === "development") {
+      childWin.webContents.openDevTools({ mode: "undocked", activate: true });
     }
-    childWin.loadURL(winURL + `#${arg.url}`)
-    childWin.once('ready-to-show', () => {
+    childWin.loadURL(winURL + `#${arg.url}`);
+    childWin.once("ready-to-show", () => {
       // childWin.show()
       if (arg.isPay) {
         // 检查支付时候自动关闭小窗口
         const testUrl = setInterval(() => {
-          const Url = childWin.webContents.getURL()
+          const Url = childWin.webContents.getURL();
           if (arg.payUrl && Url.includes(arg.payUrl)) {
-            childWin.close()
+            childWin.close();
           }
-        }, 1200)
-        childWin.on('close', () => {
-          clearInterval(testUrl)
-        })
+        }, 1200);
+        childWin.on("close", () => {
+          clearInterval(testUrl);
+        });
       }
-    })
+    });
     // 渲染进程显示时触发
-    childWin.once('show', () => {
-      webContentSend.window.sendData(childWin.webContents, arg.sendData)
-    })
+    childWin.once("show", () => {
+      webContentSend.window.sendData(childWin.webContents, arg.sendData);
+    });
   },
   isUseSysTitle: () => config.IsUseSysTitle,
   quit: () => {
-    app.quit()
+    app.quit();
   },
   checkUpdate: (event) => {
-    const windows = BrowserWindow.fromWebContents(event.sender)
-    if (!windows) return
-    allUpdater.checkUpdate(windows)
+    const windows = BrowserWindow.fromWebContents(event.sender);
+    if (!windows) return;
+    allUpdater.checkUpdate(windows);
   },
   confirmUpdate: () => {
-    allUpdater.quitAndInstall()
+    allUpdater.quitAndInstall();
   },
   openMessagebox: async (event, arg) => {
-    const window = BrowserWindow.fromWebContents(event.sender)
+    const window = BrowserWindow.fromWebContents(event.sender);
     if (!window) {
-      throw new Error('No window found for event sender')
+      throw new Error("No window found for event sender");
     }
     return dialog.showMessageBox(window, {
-      type: arg.type || 'info',
-      title: arg.title || '',
+      type: arg.type || "info",
+      title: arg.title || "",
       buttons: arg.buttons || [],
-      message: arg.message || '',
+      message: arg.message || "",
       noLink: arg.noLink || true,
-    })
+    });
   },
   openErrorbox: (_event, arg) => {
-    dialog.showErrorBox(arg.title, arg.message)
+    dialog.showErrorBox(arg.title, arg.message);
   },
   winReady: (event) => {
-    const windows = BrowserWindow.fromWebContents(event.sender)
-    if (!windows) return
-    windows.show()
+    const windows = BrowserWindow.fromWebContents(event.sender);
+    if (!windows) return;
+    windows.show();
   },
   // TODO: 实现"我的电脑"显示检查功能
   checkShowOnMyComputer: async () => {
-    console.log('checkShowOnMyComputer - Not implemented yet')
-    return false
+    console.log("checkShowOnMyComputer - Not implemented yet");
+    return false;
   },
   // TODO: 实现"我的电脑"显示设置功能
   setShowOnMyComputer: (_event, show) => {
-    console.log('setShowOnMyComputer - Not implemented yet', show)
-    return show
+    console.log("setShowOnMyComputer - Not implemented yet", show);
+    return show;
   },
   setStoreValue: (_event, args) => {
-    store.set(args.key, args.value)
+    store.set(args.key, args.value);
   },
   getStoreValue: (_event, args) => {
-    return store.get(args.key)
+    return store.get(args.key);
   },
   deleteStoreValue: (_event, args) => {
-    store.delete(args.key)
+    store.delete(args.key);
   },
-}
+};
