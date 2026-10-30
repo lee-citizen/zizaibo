@@ -1,11 +1,11 @@
 <template>
-    <div class="key-page  flex gap-5 p-5 overflow-hidden">
+    <div class="key-page h-full flex gap-5 p-5 overflow-hidden">
         <!-- 左侧：产品信息面板 -->
         <aside class="info-panel flex-1 rounded-2xl p-7 flex flex-col justify-between overflow-hidden">
             <div class="relative z-10">
                 <div class="brand flex items-center gap-2">
                     <div class="logo-dot" />
-                    <span class="brand-name">LiveTools 会员中心</span>
+                    <span class="brand-name">自在播 会员中心</span>
                 </div>
                 <h1 class="headline mt-6">激活授权，解锁全部能力</h1>
                 <p class="headline-sub mt-2">一卡一机绑定，激活后本机永久享有会员权益</p>
@@ -199,7 +199,6 @@ onMounted(() => {
 <style lang="scss" scoped>
 .key-page {
     background: #f7f9f9;
-    height: calc(100% - 50px);
 }
 
 /* ============ 左侧信息面板 ============ */

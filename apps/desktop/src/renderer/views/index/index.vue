@@ -3,15 +3,11 @@
     <div class="px-8 py-6 space-y-5">
       <!-- ========== 欢迎横幅 ========== -->
       <section
-        class="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-sm"
-      >
+        class="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-sm">
         <!-- 装饰光斑 -->
+        <div class="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div
-          class="absolute -top-16 -right-10 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none"
-        />
-        <div
-          class="absolute -bottom-20 left-1/3 w-64 h-64 rounded-full bg-purple-400/20 blur-3xl pointer-events-none"
-        />
+          class="absolute -bottom-20 left-1/3 w-64 h-64 rounded-full bg-purple-400/20 blur-3xl pointer-events-none" />
 
         <div class="relative z-10 px-8 py-8 flex items-center justify-between gap-6">
           <div class="min-w-0">
@@ -22,19 +18,13 @@
             </p>
           </div>
           <div class="flex items-center gap-3 shrink-0">
-            <span
-              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-xs text-white/90"
-            >
-              <span
-                class="w-2 h-2 rounded-full"
-                :class="connect.connected ? 'bg-green-400' : 'bg-gray-300'"
-              />
+            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-xs text-white/90">
+              <span class="w-2 h-2 rounded-full" :class="connect.connected ? 'bg-green-400' : 'bg-gray-300'" />
               {{ connect.connected ? '已连接直播' : '未连接直播' }}
             </span>
             <button
               class="px-4 py-2 rounded-lg bg-white text-blue-600 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
-              @click="router.push('/connect')"
-            >
+              @click="router.push('/connect')">
               {{ connect.connected ? '直播间' : '连接直播' }}
             </button>
           </div>
@@ -48,27 +38,20 @@
           <span class="text-xs text-gray-400">点击卡片直达对应功能</span>
         </div>
         <div class="grid grid-cols-3 gap-4">
-          <div
-            v-for="item in features"
-            :key="item.path"
+          <div v-for="item in features" :key="item.path"
             class="group bg-white rounded-lg border border-gray-200 p-5 shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            :class="item.hoverBorder"
-            @click="router.push(item.path)"
-          >
+            :class="item.hoverBorder" @click="router.push(item.path)">
             <div class="flex items-start gap-3">
               <div
                 class="w-11 h-11 rounded-lg flex items-center justify-center text-xl shrink-0 transition-transform duration-200 group-hover:scale-110"
-                :class="item.tint"
-              >
+                :class="item.tint">
                 {{ item.icon }}
               </div>
               <div class="min-w-0">
                 <div class="flex items-center gap-1.5">
                   <span class="text-[15px] font-semibold text-gray-800">{{ item.title }}</span>
-                  <span
-                    v-if="item.hot"
-                    class="px-1.5 py-0.5 rounded text-[10px] leading-none bg-rose-50 text-rose-500 border border-rose-100"
-                  >
+                  <span v-if="item.hot"
+                    class="px-1.5 py-0.5 rounded text-[10px] leading-none bg-rose-50 text-rose-500 border border-rose-100">
                     HOT
                   </span>
                 </div>
@@ -83,14 +66,10 @@
       <section class="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
         <h2 class="text-lg font-semibold text-gray-800 mb-4">三步上手</h2>
         <div class="grid grid-cols-3 gap-4">
-          <div
-            v-for="(step, i) in steps"
-            :key="i"
-            class="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border border-gray-100"
-          >
+          <div v-for="(step, i) in steps" :key="i"
+            class="flex items-start gap-3 p-4 rounded-lg bg-gray-50 border border-gray-100">
             <div
-              class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs font-bold flex items-center justify-center shrink-0"
-            >
+              class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
               {{ i + 1 }}
             </div>
             <div>
@@ -102,7 +81,7 @@
       </section>
 
       <!-- 页脚 -->
-      <p class="text-center text-xs text-gray-300 pb-2">LiveTools · 让直播更轻松</p>
+      <p class="text-center text-xs text-gray-300 pb-2">自在播 · 让直播更轻松</p>
     </div>
   </div>
 </template>
@@ -202,7 +181,7 @@ const features = [
 const steps = [
   { title: "连接直播间", desc: "进入「连接直播」，完成直播间授权与连接" },
   { title: "挑选功能", desc: "按需开启背景音乐、自动报时、智能朗读等能力" },
-  { title: "开播嗨皮", desc: "剩下的交给 LiveTools，专心表演就好" },
+  { title: "开播嗨皮", desc: "剩下的交给 自在播，专心表演就好" },
 ];
 </script>
 

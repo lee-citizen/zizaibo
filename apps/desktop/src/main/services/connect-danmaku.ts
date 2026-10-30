@@ -29,7 +29,7 @@ export function connectOpenRoom(args: { url: string }): { windowId: number } {
   const win = new BrowserWindow({
     width: 1100,
     height: 760,
-    title: "直播间（LiveTools）",
+    title: "直播间（自在播）",
     autoHideMenuBar: true,
     backgroundColor: "#111111",
     webPreferences: {
@@ -54,12 +54,12 @@ export function connectOpenRoom(args: { url: string }): { windowId: number } {
   win.webContents.setWindowOpenHandler(({ url }) => {
     // 允许页面自己开 http(s) 新窗口（如用户主页），其余一律拒绝
     if (/^https?:/i.test(url)) {
-      void win.loadURL(url).catch(() => {});
+      void win.loadURL(url).catch(() => { });
     }
     return { action: "deny" };
   });
   // loadURL 不阻塞返回：窗口先弹出来，加载过程用户可见
-  void win.loadURL(args.url).catch(() => {});
+  void win.loadURL(args.url).catch(() => { });
   const windowId = win.webContents.id;
   // 用户手动关窗 → 会话随窗口销毁自然失效（下次 pull 返回 null 通知渲染层）
   win.on("closed", () => {

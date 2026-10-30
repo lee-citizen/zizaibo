@@ -8,7 +8,7 @@
     }
   ],
   "afterPack": "afterPack.mjs",
-  "productName": "electron-vite-template",
+  "productName": "自在播",
   "appId": "org.sky.electron-vite-template",
   "directories": {
     "output": "build"
@@ -32,12 +32,12 @@
     ]
   },
   "mac": {
-    "icon": "build/icons/icon.icns"
+    "icon": "src/renderer/assets/logo.png"
   },
   "win": {
-    "icon": "build/icons/icon.ico"
+    "icon": "src/renderer/assets/logo.png"
   },
   "linux": {
-    "icon": "build/icons"
+    "icon": "src/renderer/assets/logo.png"
   }
 }

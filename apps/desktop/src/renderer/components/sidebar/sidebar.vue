@@ -1,14 +1,14 @@
 <template>
     <div class="h-full  w-52 relative">
-        <aside class="h-[calc(100%-30px)] w-52 bg-slate-900 text-slate-300 flex flex-col fixed ">
+        <aside class="h-[calc(100%-30px)] w-52 bg-slate-900  text-slate-300 flex flex-col fixed ">
             <!-- Logo 区域 -->
             <div class="px-5 py-5 border-b border-slate-700/60">
                 <div class="flex items-center gap-2">
                     <div
-                        class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                        L
+                        class="w-8 h-8 ml-4  rounded-lg overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                        <img src="@renderer/assets/logo.png" alt="" srcset="">
                     </div>
-                    <span class="text-white font-semibold text-base">LiveTools</span>
+                    <span class="text-white font-semibold text-base ml-2">自在播</span>
                 </div>
             </div>
 

@@ -133,6 +133,8 @@ onUnmounted(() => {
   &.mac {
     justify-content: flex-start;
     padding-left: 80px;
+    // 整条标题栏可拖动窗口；系统红绿灯在独立层，不受 drag 影响仍可点击
+    -webkit-app-region: drag;
   }
 }
 
