@@ -117,6 +117,7 @@ import {
   normalizeRoomUrl,
 } from "@renderer/utils/danmaku";
 import { ipc } from "@renderer/utils/ipcRenderer";
+import { copyToClipboard } from "@renderer/utils/clipboard";
 
 const connect = useConnectStore();
 const connecting = ref(false);
@@ -261,7 +262,7 @@ async function onDiagnose(): Promise<void> {
     });
     const text = reports.join("\n\n").slice(0, 60000);
     try {
-      await navigator.clipboard.writeText(text);
+      await copyToClipboard(text);
       ElMessage.success({
         message: "诊断信息已复制到剪贴板，请粘贴发给开发者",
         offset: 40,

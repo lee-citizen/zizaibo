@@ -109,6 +109,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Key, CircleCheckFilled, Warning, Film, ChatDotRound, Clock, Headset } from '@element-plus/icons-vue'
 import { ipc } from '@renderer/utils/ipcRenderer'
+import { copyToClipboard } from '@renderer/utils/clipboard'
 
 const machineId = ref('')
 const cardKey = ref('')
@@ -158,7 +159,7 @@ const fetchMachineId = async () => {
 const copyMachineId = async () => {
     if (!machineId.value) return
     try {
-        await navigator.clipboard.writeText(machineId.value)
+        await copyToClipboard(machineId.value)
         ElMessage.success('机器码已复制')
     } catch {
         ElMessage.error('复制失败，请手动复制')

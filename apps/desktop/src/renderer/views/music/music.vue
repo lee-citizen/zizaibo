@@ -139,7 +139,7 @@
               {{ track.name }}
             </span>
             <el-button size="small" text type="primary" @click="bgm.playTrack(index)">
-              {{ index === bgm.currentIndex && bgm.isPlaying ? "播放中" : "播放" }}
+              {{ index === bgm.currentIndex && bgm.isPlaying ? "暂停" : "播放" }}
             </el-button>
             <el-button size="small" text type="danger" @click="bgm.removeTrack(index)">
               删除

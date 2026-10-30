@@ -248,13 +248,28 @@ export const useBgmStore = defineStore("bgm", () => {
   function playTrack(index: number): void {
     if (!audio) return;
     if (index < 0 || index >= playlist.value.length) return;
-    currentIndex.value = index;
     const track = playlist.value[index];
     if (!track) return;
+
+    // 点击当前曲目：切换播放 / 暂停，而不是从头重播
+    if (index === currentIndex.value) {
+      if (isPlaying.value) {
+        audio.pause();
+      } else {
+        // 应用重启后 currentIndex 由持久化 currentId 恢复，但 audio.src 可能尚未设置
+        if (!audio.currentSrc) {
+          audio.src = track.url;
+        }
+        playAudio();
+      }
+      return;
+    }
+
+    // 点击其它曲目：切换并从头播放
+    currentIndex.value = index;
     currentId.value = track.id;
     void saveMeta();
     audio.src = track.url;
-    // 设置 src 后通过 playAudio() 播放（内部含 canplay 重试，保证首次即出声）
     playAudio();
   }
 
