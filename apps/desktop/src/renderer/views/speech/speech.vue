@@ -44,11 +44,7 @@
               />
             </el-select>
             <p class="text-xs text-gray-400 mt-1">
-              {{
-                speech.isMac
-                  ? "微软中文神经声音（edge-tts，免费需联网）"
-                  : "基于系统自带 TTS 声音库（Windows 含微软神经声音）"
-              }}
+              微软中文神经声音（edge-tts，免费需联网；离线时自动回退系统声音）
             </p>
           </div>
           <div>
@@ -98,14 +94,14 @@
           </div>
         </div>
 
-        <!-- edge-tts 提示（仅 macOS 显示） -->
-        <div v-if="speech.isMac" class="mt-6 pt-5 border-t border-gray-100">
+        <!-- edge-tts 提示 -->
+        <div class="mt-6 pt-5 border-t border-gray-100">
           <div class="flex items-center gap-2">
-            <el-tag size="small" type="info" effect="plain">macOS 专用</el-tag>
+            <el-tag size="small" type="info" effect="plain">在线合成</el-tag>
             <span class="text-sm text-gray-600">
               当前通过
               <span class="text-blue-600 font-medium">edge-tts（微软 Edge 在线 TTS，免费）</span>
-              调用微软神经声音，无需配置密钥，需联网使用。
+              调用微软神经声音，无需配置密钥，需联网使用；离线时自动回退到系统声音朗读。
             </span>
           </div>
         </div>

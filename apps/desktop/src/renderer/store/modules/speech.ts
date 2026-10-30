@@ -150,14 +150,6 @@ const TTS_SETTINGS_KEY = "speech-tts-settings";
 const GUIDE_SETTINGS_KEY = "speech-guide-settings";
 const VOICE_SETTINGS_KEY = "speech-voice-settings";
 
-/** 是否为 macOS（渲染进程用 navigator.platform 判断，sandbox 下无 process） */
-function detectIsMac(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /mac/i.test(navigator.platform || "");
-}
-
-export const IS_MAC = detectIsMac();
-
 /** Hz 偏移转 speechSynthesis 相对 pitch（0~2）。以 150Hz 为基准频率近似换算。 */
 function hzToPitch(hz: number): number {
   const rel = (150 + hz) / 150;
@@ -298,31 +290,14 @@ export const useSpeechStore = defineStore("speech", () => {
   }
 
   // ---------- TTS ----------
-  /** 判断是否为中文声音（lang 以 zh 开头，或 name 含中文/Chinese） */
-  function isChineseVoice(v: SpeechSynthesisVoice): boolean {
-    if (/^zh/i.test(v.lang)) return true;
-    if (/[\u4e00-\u9fa5]/.test(v.name)) return true;
-    if (/Chinese|Mandarin|cmn/i.test(v.name)) return true;
-    return false;
-  }
-
-  /** 加载可用语音列表：macOS 用固定微软神经声音（走 edge-tts），Windows 用系统中文声音 */
+  /** 加载可用语音列表：统一使用 edge-tts 微软神经声音（跨平台，音质一致）。
+   *  离线朗读时 speak() 会自动回退到本地 Web Speech。 */
   function loadVoices(): void {
-    if (IS_MAC) {
-      voices.value = EDGE_TTS_CHINESE_VOICES;
-      // 历史上可能保存过 Edge 不支持的音色，这里纠正为第一个可用音色
-      const valid = EDGE_TTS_CHINESE_VOICES.some((v) => v.voiceURI === selectedVoiceURI.value);
-      if (!valid) {
-        selectedVoiceURI.value = EDGE_TTS_CHINESE_VOICES[0].voiceURI;
-      }
-      return;
-    }
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    const all = window.speechSynthesis.getVoices();
-    const zhVoices = all.filter(isChineseVoice);
-    voices.value = zhVoices.length > 0 ? zhVoices : all;
-    if (!selectedVoiceURI.value) {
-      selectedVoiceURI.value = voices.value[0]?.voiceURI ?? "";
+    voices.value = EDGE_TTS_CHINESE_VOICES;
+    // 历史上可能保存过 Edge 不支持的音色，这里纠正为第一个可用音色
+    const valid = EDGE_TTS_CHINESE_VOICES.some((v) => v.voiceURI === selectedVoiceURI.value);
+    if (!valid) {
+      selectedVoiceURI.value = EDGE_TTS_CHINESE_VOICES[0].voiceURI;
     }
   }
 
@@ -378,23 +353,10 @@ export const useSpeechStore = defineStore("speech", () => {
     await edgeAudio.play();
   }
 
-  /** 把当前选中的声音映射为 edge-tts 可用的 ShortName（Windows 系统声音按名称关键字映射） */
+  /** 把当前选中的声音映射为 edge-tts 可用的 ShortName。
+   *  声音列表已统一为 edge-tts 神经声音，selectedVoiceURI 即为 ShortName。 */
   function resolveEdgeVoice(): string {
-    if (IS_MAC) return selectedVoiceURI.value || "zh-CN-XiaoxiaoNeural";
-    const v = voices.value.find((x) => x.voiceURI === selectedVoiceURI.value);
-    const probe = `${v?.name ?? ""} ${selectedVoiceURI.value}`.toLowerCase();
-    const table: Array<[string[], string]> = [
-      [["yunxi", "云希"], "zh-CN-YunxiNeural"],
-      [["xiaoxiao", "晓晓"], "zh-CN-XiaoxiaoNeural"],
-      [["yunjian", "云健"], "zh-CN-YunjianNeural"],
-      [["yunyang", "云扬"], "zh-CN-YunyangNeural"],
-      [["yunxia", "云夏"], "zh-CN-YunxiaNeural"],
-      [["xiaoyi", "晓伊"], "zh-CN-XiaoyiNeural"],
-    ];
-    for (const [keywords, shortName] of table) {
-      if (keywords.some((k) => probe.includes(k))) return shortName;
-    }
-    return "zh-CN-XiaoxiaoNeural";
+    return selectedVoiceURI.value || "zh-CN-XiaoxiaoNeural";
   }
 
   /** 用当前音色/语速/音调把文本合成为 base64 mp3 */
@@ -408,35 +370,37 @@ export const useSpeechStore = defineStore("speech", () => {
     return result.base64;
   }
 
-  /** 用当前配置朗读一段文本。macOS 走 edge-tts，Windows 走本地 Web Speech。 */
+  /** 用当前配置朗读一段文本。优先 edge-tts（跨平台神经声音），失败回退本地 Web Speech。 */
   function speak(text: string): void {
     if (!text || !text.trim()) return;
-    if (IS_MAC) {
-      void speakEdgeTts(text);
-      return;
+    void speakWithFallback(text);
+  }
+
+  /** edge-tts 合成失败时回退到系统 Web Speech，保证离线也能出声 */
+  async function speakWithFallback(text: string): Promise<void> {
+    try {
+      await speakEdgeTts(text);
+    } catch {
+      // edge-tts 失败（离线/网络问题）：回退本地系统声音
+      if (!window.speechSynthesis) return;
+      stopSpeaking();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = rate.value;
+      u.pitch = hzToPitch(pitchHz.value);
+      u.volume = getTtsVolume();
+      u.lang = "zh-CN";
+      u.onstart = () => {
+        isSpeaking.value = true;
+      };
+      u.onend = () => {
+        isSpeaking.value = false;
+      };
+      u.onerror = () => {
+        isSpeaking.value = false;
+      };
+      window.speechSynthesis.speak(u);
+      ElMessage.info({ message: "在线音色不可用，已使用系统声音朗读", offset: 40 });
     }
-    if (!window.speechSynthesis) {
-      ElMessage.warning({ message: "当前环境不支持语音朗读", offset: 40 });
-      return;
-    }
-    stopSpeaking();
-    const u = new SpeechSynthesisUtterance(text);
-    const v = voices.value.find((x) => x.voiceURI === selectedVoiceURI.value);
-    if (v) u.voice = v;
-    u.rate = rate.value;
-    u.pitch = hzToPitch(pitchHz.value);
-    u.volume = getTtsVolume();
-    u.lang = v?.lang ?? "zh-CN";
-    u.onstart = () => {
-      isSpeaking.value = true;
-    };
-    u.onend = () => {
-      isSpeaking.value = false;
-    };
-    u.onerror = () => {
-      isSpeaking.value = false;
-    };
-    window.speechSynthesis.speak(u);
   }
 
   /** macOS：调用 edge-tts（微软 Edge 在线 TTS，免费）合成并播放 */
@@ -987,11 +951,8 @@ export const useSpeechStore = defineStore("speech", () => {
     loadGuideSettings();
     loadVoiceSettings();
 
-    // 加载系统语音（异步就绪）
-    if (window.speechSynthesis) {
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    // 加载语音列表（统一使用 edge-tts 神经声音，不依赖系统 speechSynthesis）
+    loadVoices();
 
     await initVoices();
 
@@ -1023,8 +984,6 @@ export const useSpeechStore = defineStore("speech", () => {
     saveTts,
     previewGeneratedVoice,
     saveGeneratedVoice,
-    // 平台标识（macOS 走 edge-tts）
-    isMac: IS_MAC,
     // guide
     guide,
     playedScripts,
