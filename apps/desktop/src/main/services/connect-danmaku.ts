@@ -194,7 +194,7 @@ export function connectHideRoom(args: { windowId: number }): void {
   win.setPosition(OFFSCREEN_POS[0], OFFSCREEN_POS[1]);
 }
 
-/** 恢复显示直播间窗口：移回隐藏前的位置 */
+/** 恢复显示直播间窗口：移回隐藏前的位置并拉到最顶层 */
 export function connectShowRoom(args: { windowId: number }): void {
   const wc = webContents.fromId(args.windowId);
   if (!wc || wc.isDestroyed()) return;
@@ -204,6 +204,10 @@ export function connectShowRoom(args: { windowId: number }): void {
   if (!pos) return;
   win.setPosition(pos[0], pos[1]);
   hiddenPositions.delete(args.windowId);
+  // 拉到窗口栈最顶层并聚焦，确保用户能立刻看到
+  win.show();
+  win.focus();
+  win.moveTop();
 }
 
 /** 查询直播间窗口是否已隐藏 */
