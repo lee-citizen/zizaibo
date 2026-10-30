@@ -85,6 +85,23 @@ export interface AppContract {
   getMusicMeta(): MusicMeta;
   /** 写入背景音乐元数据 */
   setMusicMeta(args: SetMusicMetaArgs): void;
+
+  // ---------- 智能朗读：我的语音 ----------
+  /** 打开原生文件选择框，把选中的音频拷贝到 userData/bg-voice-user 目录 */
+  addUserVoice(): UserVoiceTrack[];
+  /** 保存一段现场录音（base64）到 userData/bg-voice-user 目录 */
+  saveUserVoiceRecording(args: SaveUserVoiceRecordingArgs): UserVoiceTrack;
+  /** 从磁盘删除指定语音文件 */
+  deleteUserVoice(args: DeleteUserMusicArgs): void;
+  /** 扫描 userData/bg-voice-user 目录，返回所有语音曲目 */
+  listUserVoice(): UserVoiceTrack[];
+  /** 读取语音管理元数据 */
+  getVoiceMeta(): VoiceMeta;
+  /** 写入语音管理元数据 */
+  setVoiceMeta(args: SetVoiceMetaArgs): void;
+
+  /** 调用 edge-tts（微软 Edge 在线 TTS）合成语音，返回 base64 编码的 mp3 音频 */
+  edgeTtsSynthesize(args: EdgeTtsArgs): EdgeTtsResult;
 }
 
 /** deleteUserMusic 的载荷 */
@@ -96,6 +113,71 @@ export interface DeleteUserMusicArgs {
 /** setMusicMeta 的载荷 */
 export interface SetMusicMetaArgs {
   meta: MusicMeta;
+}
+
+// ===================== 智能朗读（speech）=====================
+
+/** 用户上传/录制的语音曲目（文件落在 userData/bg-voice-user/） */
+export interface UserVoiceTrack {
+  /** 唯一 id */
+  id: string;
+  /** 显示名称 */
+  name: string;
+  /** 磁盘真实文件名（含扩展名） */
+  fileName: string;
+  /** 可直接用于 audio.src 的自定义协议 URL */
+  url: string;
+  /** 文件大小（字节） */
+  size: number;
+  /** 导入/录制时间戳（ms） */
+  addedAt: number;
+  /** 是否为现场录音 */
+  recorded: boolean;
+}
+
+/** 语音管理元数据（整体以 JSON 字符串存入 electron-store） */
+export interface VoiceMeta {
+  /** 数据结构版本 */
+  version: number;
+  /** 用户语音曲目元数据列表 */
+  tracks: UserVoiceTrack[];
+  /** 当前播放曲目 id */
+  currentId: string;
+}
+
+/** saveUserVoiceRecording 的载荷 */
+export interface SaveUserVoiceRecordingArgs {
+  /** 文件名（含扩展名，如 recording-xxx.webm） */
+  fileName: string;
+  /** base64 编码的音频数据（不含 data: URL 前缀） */
+  base64: string;
+  /** 显示名称 */
+  name: string;
+  /** 是否为现场录音（默认为 true；TTS 生成的音频传 false） */
+  recorded?: boolean;
+}
+
+/** setVoiceMeta 的载荷 */
+export interface SetVoiceMetaArgs {
+  meta: VoiceMeta;
+}
+
+/** edge-tts 合成参数（微软 Edge 在线 TTS，免费无需密钥） */
+export interface EdgeTtsArgs {
+  /** 待朗读文本 */
+  text: string;
+  /** 微软声音名，如 zh-CN-YunxiNeural */
+  voice: string;
+  /** 语速百分比偏移，如 +15 表示 +15% */
+  ratePercent: number;
+  /** 音调 Hz 偏移，如 +8 表示 +8Hz */
+  pitchHz: number;
+}
+
+/** edge-tts 合成结果（base64 编码的 mp3 音频） */
+export interface EdgeTtsResult {
+  /** base64 编码的音频数据 */
+  base64: string;
 }
 
 /** openErrorbox 的载荷 */

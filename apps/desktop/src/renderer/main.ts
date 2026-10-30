@@ -10,6 +10,7 @@ import App from "./App.vue";
 import router from "./router";
 import { errorHandler } from "./error";
 import { useBgmStore } from "./store/modules/bgm";
+import { useSpeechStore } from "./store/modules/speech";
 
 import { i18n } from "./i18n";
 
@@ -24,5 +25,8 @@ errorHandler(app);
 
 // 全局背景音乐：应用启动即初始化音频单例与播放列表（路由切换不销毁）
 useBgmStore(store).init();
+
+// 智能朗读：加载系统语音列表与用户语音库（引导定时器随启用状态启动）
+useSpeechStore(store).init();
 
 app.mount("#app");

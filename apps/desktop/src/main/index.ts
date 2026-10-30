@@ -1,6 +1,6 @@
 "use strict";
 
-import { app, protocol, BrowserWindow } from "electron";
+import { app, protocol, BrowserWindow, session } from "electron";
 import InitWindow from "./services/window-manager";
 import { useDisableButton } from "./hooks/disable-button-hook";
 import { useProcessException } from "@main/hooks/exception-hook";
@@ -8,6 +8,7 @@ import { useMenu } from "@main/hooks/menu-hook";
 import { useMainDefaultIpc } from "./services/ipc-main";
 import { getMachineId } from "./services/machine-id";
 import { USER_MUSIC_DIR } from "./services/user-music";
+import { USER_VOICE_DIR } from "./services/user-voice";
 import { join, basename } from "path";
 import { createReadStream } from "fs";
 import { Readable } from "node:stream";
@@ -44,20 +45,39 @@ if (!gotTheLock) {
 }
 
 function onAppReady() {
-  // 自定义协议：app-user-music://music/<encoded fileName> -> userData/bg-music-user/<fileName>
-  // 用固定 host "music" 占位，文件名始终落在 pathname，避免中文文件名被当作 hostname 做 punycode 编码。
+  // 放行麦克风权限：现场录音功能需要 MediaRecorder + getUserMedia
+  // （webSecurity: false 下多数情况自动放行，此处显式处理以兼容 macOS 权限弹窗）
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    // media 涵盖麦克风与摄像头（现场录音需要）
+    callback(permission === "media");
+  });
+
+  // 自定义协议：app-user-music://<host>/<encoded fileName>
+  //   host = "music" -> userData/bg-music-user/<fileName>
+  //   host = "voice" -> userData/bg-voice-user/<fileName>
+  // 用固定 host 占位，文件名始终落在 pathname，避免中文文件名被当作 hostname 做 punycode 编码。
   const MIME_MAP: Record<string, string> = {
     ".mp3": "audio/mpeg",
     ".wav": "audio/wav",
     ".m4a": "audio/mp4",
     ".ogg": "audio/ogg",
     ".flac": "audio/flac",
+    ".webm": "audio/webm",
+  };
+  const HOST_DIR_MAP: Record<string, string> = {
+    music: USER_MUSIC_DIR,
+    voice: USER_VOICE_DIR,
   };
   protocol.handle("app-user-music", async (request) => {
     const url = new URL(request.url);
+    const host = url.hostname;
+    const baseDir = HOST_DIR_MAP[host];
+    if (!baseDir) {
+      return new Response("Not Found", { status: 404 });
+    }
     const fileName = decodeURIComponent(url.pathname.replace(/^\//, ""));
     // 用 basename 兜底，防止路径穿越
-    const filePath = join(USER_MUSIC_DIR, basename(fileName));
+    const filePath = join(baseDir, basename(fileName));
 
     let fileStat;
     try {

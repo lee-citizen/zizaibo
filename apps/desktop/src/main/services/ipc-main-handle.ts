@@ -17,6 +17,15 @@ import {
   getMusicMeta,
   setMusicMeta,
 } from "./user-music";
+import {
+  addUserVoice,
+  saveUserVoiceRecording,
+  deleteUserVoice,
+  listUserVoice,
+  getVoiceMeta,
+  setVoiceMeta,
+} from "./user-voice";
+import { edgeTtsSynthesize } from "./tts-edge";
 
 import Store from "electron-store";
 
@@ -54,6 +63,29 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   setMusicMeta: (_event, args) => {
     setMusicMeta(args.meta);
+  },
+
+  addUserVoice: async () => {
+    return addUserVoice();
+  },
+  saveUserVoiceRecording: async (_event, args) => {
+    return saveUserVoiceRecording(args);
+  },
+  deleteUserVoice: async (_event, args) => {
+    await deleteUserVoice(args.fileName);
+  },
+  listUserVoice: async () => {
+    return listUserVoice();
+  },
+  getVoiceMeta: () => {
+    return getVoiceMeta();
+  },
+  setVoiceMeta: (_event, args) => {
+    setVoiceMeta(args.meta);
+  },
+
+  edgeTtsSynthesize: async (_event, args) => {
+    return edgeTtsSynthesize(args);
   },
 
   startDownload: (event, downloadUrl) => {

@@ -11,6 +11,7 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+  msedge-tts: true
 
 minimumReleaseAgeExclude:
   - '@voidzero-dev/vite-plus-core@1.1.0'
