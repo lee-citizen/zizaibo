@@ -790,10 +790,29 @@ export const useSpeechStore = defineStore("speech", () => {
     playNextVoice();
   }
 
-  /** 开启/关闭「我的语音」总开关；开启时立即按播报方式开始循环 */
+  /** 关闭「我的语音」循环（总开关置否 + 停止播放） */
+  function disableVoiceLoop(): void {
+    voiceEnabled.value = false;
+    stopVoicePlayback();
+  }
+
+  /** 关闭「互动引导」（开关置否 + 停止定时/播报） */
+  function disableGuide(): void {
+    guide.value.enabled = false;
+    saveGuideSettings();
+    stopGuide();
+    stopSpeaking();
+    stopGuideVoice();
+  }
+
+  /**
+   * 开启/关闭「我的语音」总开关；开启时立即按播报方式开始循环。
+   * 与「互动引导」互斥：开启一方会自动关闭另一方的开关。
+   */
   function setVoiceEnabled(enabled: boolean): void {
     voiceEnabled.value = enabled;
     if (enabled) {
+      if (guide.value.enabled) disableGuide();
       if (voiceTracks.value.length === 0) {
         ElMessage.info({ message: "暂无语音，请先导入或录制语音", offset: 40 });
         return;
@@ -906,15 +925,14 @@ export const useSpeechStore = defineStore("speech", () => {
   }
 
   function toggleGuide(enabled: boolean): void {
-    guide.value.enabled = enabled;
-    saveGuideSettings();
     if (enabled) {
+      // 与「我的语音」互斥：开启引导时自动关闭我的语音循环
+      if (voiceEnabled.value) disableVoiceLoop();
+      guide.value.enabled = true;
+      saveGuideSettings();
       startGuide();
     } else {
-      stopGuide();
-      stopSpeaking();
-      // 只停引导自己的播报，不影响「我的语音」的独立循环
-      stopGuideVoice();
+      disableGuide();
     }
   }
 
