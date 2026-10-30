@@ -87,3 +87,10 @@ a:hover {
 .app-container {
   padding: 20px;
 }
+
+// 全局调整 Element Plus 消息提示位置：
+// 顶部自定义标题栏高 30px 会遮挡默认 top:16px 的 message，
+// 通过 margin-top 整体下移，且不影响多条消息堆叠（每条 top 独立计算）。
+.el-message {
+  margin-top: 40px;
+}
