@@ -40,14 +40,43 @@
     </div>
 
     <!-- 右侧操作 -->
-    <el-button size="small">
-      <span>隐藏直播画面窗口</span>
-    </el-button>
+    <div class="flex items-center gap-2">
+      <!-- 仅在已连接直播间时显示隐藏/显示按钮 -->
+      <el-button
+        v-if="connect.connected"
+        size="small"
+        :type="connect.roomHidden ? 'primary' : 'default'"
+        @click="toggleRoomVisibility"
+      >
+        <span>{{ connect.roomHidden ? '显示直播画面窗口' : '隐藏直播画面窗口' }}</span>
+      </el-button>
+    </div>
   </nav>
 </template>
 
 <script setup lang="ts">
 import { useConnectStore } from '@renderer/store/modules/connect'
+import { ipc } from '@renderer/utils/ipcRenderer'
+import { ElMessage } from 'element-plus'
 
 const connect = useConnectStore()
+
+/** 切换直播间窗口的显示/隐藏（隐藏后弹幕采集不中断） */
+async function toggleRoomVisibility(): Promise<void> {
+  if (!connect.windowId) return
+  try {
+    if (connect.roomHidden) {
+      await ipc.app.connectShowRoom({ windowId: connect.windowId })
+      connect.roomHidden = false
+    } else {
+      await ipc.app.connectHideRoom({ windowId: connect.windowId })
+      connect.roomHidden = true
+    }
+  } catch (e) {
+    ElMessage.error({
+      message: connect.roomHidden ? '显示直播间失败' : '隐藏直播间失败',
+      offset: 40,
+    })
+  }
+}
 </script>

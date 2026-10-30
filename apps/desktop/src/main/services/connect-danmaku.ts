@@ -19,6 +19,10 @@ interface DanmakuSession {
 
 /** windowId -> 会话 */
 const sessions = new Map<number, DanmakuSession>();
+/** windowId -> 隐藏前的原始位置 [x, y]，恢复时移回 */
+const hiddenPositions = new Map<number, [number, number]>();
+/** 移出屏幕的目标坐标（足够远，确保不在任何屏幕内） */
+const OFFSCREEN_POS: [number, number] = [-30000, -30000];
 
 /** 打开直播间独立窗口 */
 export function connectOpenRoom(args: { url: string }): { windowId: number } {
@@ -35,6 +39,9 @@ export function connectOpenRoom(args: { url: string }): { windowId: number } {
       webSecurity: false,
       // 登录态持久：用户在窗口里登录一次，后续连接免登录
       partition: "persist:connect",
+      // 关键：窗口移出屏幕隐藏后，禁止 Chromium 后台节流，
+      // 保证弹幕页面 JS 正常执行、弹幕继续滚动，采集不中断。
+      backgroundThrottling: false,
     },
   });
   // 页面自己有标题栏信息，避免双标题
@@ -64,6 +71,7 @@ export function connectOpenRoom(args: { url: string }): { windowId: number } {
 /** 关闭直播间窗口并清理会话 */
 export function connectCloseRoom(args: { windowId: number }): void {
   sessions.delete(args.windowId);
+  hiddenPositions.delete(args.windowId);
   const wc = webContents.fromId(args.windowId);
   if (wc && !wc.isDestroyed()) {
     const win = BrowserWindow.fromWebContents(wc);
@@ -164,4 +172,41 @@ export async function connectPull(args: { windowId: number }): Promise<ConnectPu
     }
   }
   return merged;
+}
+
+// ===================== 窗口隐藏 / 显示（弹幕采集不中断） =====================
+
+/**
+ * 隐藏直播间窗口：把窗口移出屏幕可视区域。
+ * 不使用 hide() / 最小化，因为这两种方式在部分平台仍会触发 Chromium 后台节流；
+ * 移出屏幕后窗口在技术上仍是「可见」状态，配合 backgroundThrottling:false，
+ * 页面 JS 正常执行、弹幕继续滚动，采集不受影响。
+ */
+export function connectHideRoom(args: { windowId: number }): void {
+  const wc = webContents.fromId(args.windowId);
+  if (!wc || wc.isDestroyed()) return;
+  const win = BrowserWindow.fromWebContents(wc);
+  if (!win || win.isDestroyed()) return;
+  // 已隐藏则不重复处理
+  if (hiddenPositions.has(args.windowId)) return;
+  const [x, y] = win.getPosition();
+  hiddenPositions.set(args.windowId, [x, y]);
+  win.setPosition(OFFSCREEN_POS[0], OFFSCREEN_POS[1]);
+}
+
+/** 恢复显示直播间窗口：移回隐藏前的位置 */
+export function connectShowRoom(args: { windowId: number }): void {
+  const wc = webContents.fromId(args.windowId);
+  if (!wc || wc.isDestroyed()) return;
+  const win = BrowserWindow.fromWebContents(wc);
+  if (!win || win.isDestroyed()) return;
+  const pos = hiddenPositions.get(args.windowId);
+  if (!pos) return;
+  win.setPosition(pos[0], pos[1]);
+  hiddenPositions.delete(args.windowId);
+}
+
+/** 查询直播间窗口是否已隐藏 */
+export function connectIsRoomHidden(args: { windowId: number }): boolean {
+  return hiddenPositions.has(args.windowId);
 }

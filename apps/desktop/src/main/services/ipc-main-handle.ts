@@ -33,6 +33,9 @@ import {
   connectPull,
   connectStop,
   connectDiagnose,
+  connectHideRoom,
+  connectShowRoom,
+  connectIsRoomHidden,
 } from "./connect-danmaku";
 
 import Store from "electron-store";
@@ -120,6 +123,15 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   connectDiagnose: async (_event, args) => {
     return connectDiagnose(args);
+  },
+  connectHideRoom: (_event, args) => {
+    connectHideRoom(args);
+  },
+  connectShowRoom: (_event, args) => {
+    connectShowRoom(args);
+  },
+  connectIsRoomHidden: (_event, args) => {
+    return connectIsRoomHidden(args);
   },
 
   startDownload: (event, downloadUrl) => {

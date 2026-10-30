@@ -128,6 +128,12 @@ export interface AppContract {
   connectPull(args: ConnectStopArgs): ConnectPullResult | null;
   /** 收集直播间窗口所有 frame 的页面结构诊断信息（用于校准弹幕选择器） */
   connectDiagnose(args: ConnectDiagnoseArgs): ConnectDiagnoseResult;
+  /** 隐藏直播间窗口（移出屏幕，弹幕采集不中断） */
+  connectHideRoom(args: ConnectStopArgs): void;
+  /** 恢复显示直播间窗口（移回原位） */
+  connectShowRoom(args: ConnectStopArgs): void;
+  /** 查询直播间窗口是否已隐藏 */
+  connectIsRoomHidden(args: ConnectStopArgs): boolean;
 }
 
 /** deleteUserMusic 的载荷 */

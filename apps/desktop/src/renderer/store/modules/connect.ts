@@ -20,6 +20,8 @@ export const useConnectStore = defineStore("connect", () => {
   const connected = ref(false);
   /** 直播间窗口的 webContents id */
   const windowId = ref(0);
+  /** 直播间窗口是否已隐藏（移出屏幕，弹幕采集不中断） */
+  const roomHidden = ref(false);
   /** 连接发起时间（用于「迟迟未就绪」判定） */
   const connectedAt = ref(0);
   /** 平台标识，M1 只有 douyin */
@@ -108,6 +110,7 @@ export const useConnectStore = defineStore("connect", () => {
       paused.value = false;
       pending.value = [];
       pendingCount.value = 0;
+      roomHidden.value = false;
     }
   }
 
@@ -144,6 +147,7 @@ export const useConnectStore = defineStore("connect", () => {
     connected,
     connectedAt,
     windowId,
+    roomHidden,
     platform,
     messages,
     viewerText,
