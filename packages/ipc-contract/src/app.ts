@@ -37,6 +37,14 @@ export interface MusicMeta {
 export interface AppContract {
   /** 是否使用系统标题栏 */
   isUseSysTitle(): boolean;
+  /** 窗口最小化 */
+  winMinimize(): void;
+  /** 窗口最大化 / 还原切换 */
+  winToggleMaximize(): void;
+  /** 窗口是否已最大化 */
+  winIsMaximized(): boolean;
+  /** 窗口关闭 */
+  winClose(): void;
   /** 获取静态资源路径 */
   getStaticPath(): string;
   /** 退出应用 */

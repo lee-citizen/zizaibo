@@ -167,6 +167,24 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
     });
   },
   isUseSysTitle: () => config.IsUseSysTitle,
+  winMinimize: (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.minimize();
+  },
+  winToggleMaximize: (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+  },
+  winIsMaximized: (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    return win?.isMaximized() ?? false;
+  },
+  winClose: (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win?.close();
+  },
   quit: () => {
     app.quit();
   },
