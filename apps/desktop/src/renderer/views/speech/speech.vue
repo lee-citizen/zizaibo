@@ -179,7 +179,7 @@
             <h2 class="text-lg font-semibold text-gray-800">我的语音</h2>
             <p class="text-xs text-gray-400 mt-0.5">不用 AI，请自己录一段</p>
           </div>
-          <el-switch v-model="speech.voiceEnabled" active-text="开启" inline-prompt />
+          <el-switch v-model="voiceLoopOn" active-text="开启" inline-prompt />
         </div>
 
         <!-- 选项行 -->
@@ -227,6 +227,7 @@
               size="small"
               controls-position="right"
               style="width: 100px"
+              @change="onVoiceLoopSettingChange"
             />
             <span>到</span>
             <el-input-number
@@ -237,13 +238,17 @@
               size="small"
               controls-position="right"
               style="width: 100px"
+              @change="onVoiceLoopSettingChange"
             />
             <span>秒</span>
           </div>
-          <el-checkbox v-model="speech.voiceContinuous">持续播放（无间隔）</el-checkbox>
+          <el-checkbox v-model="speech.voiceContinuous" @change="onVoiceLoopSettingChange">
+            持续播放（无间隔）
+          </el-checkbox>
         </div>
         <p class="text-xs text-gray-400 mb-4">
-          开启总开关后按播报方式循环播报；「持续播放」适合一直循环某一条话术（配合「固定播放」使用）
+          开启总开关后按播报方式循环播报；「持续播放」适合一直循环某一条话术（配合「固定播放」使用）；勾选「用我的语音朗读」后互动引导播报会使用这里的语音替代
+          TTS，与循环播放互不干扰、可同时进行
         </p>
 
         <!-- 操作按钮 -->
@@ -378,7 +383,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from "vue";
+import { ref, computed, onBeforeUnmount } from "vue";
 import { ElMessageBox } from "element-plus";
 import { VideoPlay, VideoPause, Check, Upload, Mic, Delete, Plus } from "@element-plus/icons-vue";
 import { useSpeechStore, TTS_PRESETS } from "@renderer/store/modules/speech";
@@ -438,20 +443,16 @@ function onRandomModeChange(toRandom: boolean): void {
 }
 
 // ---------- 我的语音 ----------
-const useVoiceRead = computed({
+// 总开关：控制「我的语音」独立循环播放
+const voiceLoopOn = computed({
   get: () => speech.voiceEnabled,
-  set: (v: boolean) => {
-    speech.voiceEnabled = v;
-  },
+  set: (v: boolean) => speech.setVoiceEnabled(v),
 });
-
-// 当 voiceEnabled 变化时，若关闭则停止语音播放
-watch(
-  () => speech.voiceEnabled,
-  (val) => {
-    if (!val) speech.stopVoicePlayback();
-  },
-);
+// 「用我的语音朗读」：互动引导播报时用语音替代 TTS（独立开关，与循环播放互不影响）
+const useVoiceRead = computed({
+  get: () => speech.voiceForGuide,
+  set: (v: boolean) => speech.setVoiceForGuide(v),
+});
 
 // ---------- 现场录音 ----------
 let mediaRecorder: MediaRecorder | null = null;
@@ -514,6 +515,11 @@ function stopRecording(): void {
 // ---------- 播报方式 ----------
 function onVoicePlayModeChange(mode: "sequential" | "random" | "fixed"): void {
   speech.setVoicePlayMode(mode);
+}
+
+// 持续播放/间隔设置变化后，若正在等待下一条则按新设置立即重新调度
+function onVoiceLoopSettingChange(): void {
+  speech.refreshVoiceSchedule();
 }
 
 // ---------- 文字生成语音 ----------

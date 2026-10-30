@@ -148,6 +148,7 @@ const DEFAULT_GUIDE: GuideConfig = {
 
 const TTS_SETTINGS_KEY = "speech-tts-settings";
 const GUIDE_SETTINGS_KEY = "speech-guide-settings";
+const VOICE_SETTINGS_KEY = "speech-voice-settings";
 
 /** 是否为 macOS（渲染进程用 navigator.platform 判断，sandbox 下无 process） */
 function detectIsMac(): boolean {
@@ -205,11 +206,17 @@ export const useSpeechStore = defineStore("speech", () => {
   const voiceContinuous = ref<boolean>(false);
   const voiceCurrentIndex = ref(-1);
   const voiceIsPlaying = ref(false);
+  /** 引导播报是否用「我的语音」替代 TTS（独立于循环总开关，二者可同时工作） */
+  const voiceForGuide = ref<boolean>(false);
+  /** 引导播报自己的顺序游标（与循环播放的游标分开） */
+  const guideVoiceIndex = ref<number>(-1);
   /** 连播间隔计时器 */
   let voiceNextTimer: number | null = null;
 
-  // 模块级 Audio 单例（我的语音播放）
+  // 模块级 Audio 单例（我的语音循环播放）
   let audio: HTMLAudioElement | null = null;
+  // 引导播报专用 Audio 单例（与循环播放分开，二者可同时发声）
+  let guideAudio: HTMLAudioElement | null = null;
 
   // ---------- 持久化 ----------
   function loadTtsSettings(): void {
@@ -262,6 +269,29 @@ export const useSpeechStore = defineStore("speech", () => {
   function saveGuideSettings(): void {
     try {
       localStorage.setItem(GUIDE_SETTINGS_KEY, JSON.stringify(guide.value));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function loadVoiceSettings(): void {
+    try {
+      const raw = localStorage.getItem(VOICE_SETTINGS_KEY);
+      if (raw) {
+        const s = JSON.parse(raw) as { voiceForGuide?: boolean };
+        if (typeof s.voiceForGuide === "boolean") voiceForGuide.value = s.voiceForGuide;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function saveVoiceSettings(): void {
+    try {
+      localStorage.setItem(
+        VOICE_SETTINGS_KEY,
+        JSON.stringify({ voiceForGuide: voiceForGuide.value }),
+      );
     } catch {
       /* ignore */
     }
@@ -436,6 +466,7 @@ export const useSpeechStore = defineStore("speech", () => {
       voiceTracks.value = [...voiceTracks.value, userVoiceTrackToItem(track)];
       await saveVoiceMeta();
       ElMessage.success({ message: "已保存到我的语音", offset: 40 });
+      maybeStartVoiceLoop();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       ElMessage.error({ message: msg, offset: 40 });
@@ -540,6 +571,7 @@ export const useSpeechStore = defineStore("speech", () => {
       voiceTracks.value = [...voiceTracks.value, ...imported.map(userVoiceTrackToItem)];
       await saveVoiceMeta();
       ElMessage.success({ message: `已导入 ${imported.length} 条语音`, offset: 40 });
+      maybeStartVoiceLoop();
     } catch (err) {
       console.error("[speech] 导入语音失败:", err);
       ElMessage.error({ message: "导入语音失败", offset: 40 });
@@ -556,6 +588,7 @@ export const useSpeechStore = defineStore("speech", () => {
       voiceTracks.value = [...voiceTracks.value, userVoiceTrackToItem(track)];
       await saveVoiceMeta();
       ElMessage.success({ message: "录音已保存", offset: 40 });
+      maybeStartVoiceLoop();
     } catch (err) {
       console.error("[speech] 保存录音失败:", err);
       ElMessage.error({ message: "保存录音失败", offset: 40 });
@@ -659,6 +692,19 @@ export const useSpeechStore = defineStore("speech", () => {
     }, delayMs);
   }
 
+  /**
+   * 播报设置（持续播放/间隔）变化后调用：
+   * 若总开关已开且正处于「等待下一条」的空闲状态，清掉旧计时器按新设置重新调度
+   * （勾选持续播放时会立即播下一条，不必干等旧的间隔倒计时）
+   */
+  function refreshVoiceSchedule(): void {
+    if (!voiceEnabled.value) return;
+    if (voiceTracks.value.length === 0) return;
+    // 正在播放中不用管：ended 之后会按新设置调度
+    if (voiceIsPlaying.value) return;
+    scheduleNextVoice();
+  }
+
   /** 按当前播报方式取下一条并播放 */
   function playNextVoice(): void {
     if (voiceTracks.value.length === 0) return;
@@ -736,6 +782,28 @@ export const useSpeechStore = defineStore("speech", () => {
     }
   }
 
+  /** 若总开关已开启且当前空闲（没在播、也没有待播计时），立即开始循环播报 */
+  function maybeStartVoiceLoop(): void {
+    if (!voiceEnabled.value) return;
+    if (voiceTracks.value.length === 0) return;
+    if (voiceIsPlaying.value || voiceNextTimer !== null) return;
+    playNextVoice();
+  }
+
+  /** 开启/关闭「我的语音」总开关；开启时立即按播报方式开始循环 */
+  function setVoiceEnabled(enabled: boolean): void {
+    voiceEnabled.value = enabled;
+    if (enabled) {
+      if (voiceTracks.value.length === 0) {
+        ElMessage.info({ message: "暂无语音，请先导入或录制语音", offset: 40 });
+        return;
+      }
+      maybeStartVoiceLoop();
+    } else {
+      stopVoicePlayback();
+    }
+  }
+
   // ---------- 互动引导 ----------
   /** 获取下一条待播报话术（不重复，直到全部轮播一轮） */
   function pickNextScript(): string | null {
@@ -762,14 +830,51 @@ export const useSpeechStore = defineStore("speech", () => {
     const scripts = guide.value.scripts.filter((s) => s.trim());
     if (scripts.length === 0) return;
 
-    // 若"我的语音"已启用且有语音，则播放语音替代 TTS（按播报方式取条）
-    if (voiceEnabled.value && voiceTracks.value.length > 0) {
-      playNextVoice();
+    // 勾选「用我的语音朗读」且有语音时，用独立 Audio 播放语音替代 TTS（不干扰循环播放）
+    if (voiceForGuide.value && voiceTracks.value.length > 0) {
+      playGuideVoice();
       return;
     }
 
     const script = pickNextScript();
     if (script) speak(script);
+  }
+
+  /** 引导播报专用 Audio（懒创建） */
+  function ensureGuideAudio(): HTMLAudioElement {
+    if (!guideAudio) {
+      guideAudio = new Audio();
+    }
+    return guideAudio;
+  }
+
+  /** 引导播报：按播报方式取一条「我的语音」，用独立 Audio 播放（与循环播放互不干扰） */
+  function playGuideVoice(): void {
+    if (voiceTracks.value.length === 0) return;
+    let idx: number;
+    if (voicePlayMode.value === "fixed") {
+      idx =
+        voiceFixedIndex.value >= 0 && voiceFixedIndex.value < voiceTracks.value.length
+          ? voiceFixedIndex.value
+          : 0;
+    } else if (voicePlayMode.value === "random") {
+      idx = Math.floor(Math.random() * voiceTracks.value.length);
+    } else {
+      idx = (guideVoiceIndex.value + 1) % voiceTracks.value.length;
+    }
+    guideVoiceIndex.value = idx;
+    const a = ensureGuideAudio();
+    a.src = voiceTracks.value[idx].url;
+    a.play().catch(() => {
+      /* 忽略：自动播放被拒等场景 */
+    });
+  }
+
+  function stopGuideVoice(): void {
+    if (guideAudio) {
+      guideAudio.pause();
+      guideAudio.currentTime = 0;
+    }
   }
 
   function scheduleNextGuide(): void {
@@ -808,8 +913,16 @@ export const useSpeechStore = defineStore("speech", () => {
     } else {
       stopGuide();
       stopSpeaking();
-      stopVoicePlayback();
+      // 只停引导自己的播报，不影响「我的语音」的独立循环
+      stopGuideVoice();
     }
+  }
+
+  /** 设置「用我的语音朗读」（引导播报用语音替代 TTS），持久化 */
+  function setVoiceForGuide(v: boolean): void {
+    voiceForGuide.value = v;
+    saveVoiceSettings();
+    if (!v) stopGuideVoice();
   }
 
   function saveGuide(): void {
@@ -828,6 +941,7 @@ export const useSpeechStore = defineStore("speech", () => {
     inited = true;
     loadTtsSettings();
     loadGuideSettings();
+    loadVoiceSettings();
 
     // 加载系统语音（异步就绪）
     if (window.speechSynthesis) {
@@ -883,6 +997,8 @@ export const useSpeechStore = defineStore("speech", () => {
     voiceContinuous,
     voiceCurrentIndex,
     voiceIsPlaying,
+    voiceForGuide,
+    guideVoiceIndex,
     currentVoice,
     init,
     addUserVoice,
@@ -893,6 +1009,10 @@ export const useSpeechStore = defineStore("speech", () => {
     playVoice,
     playNextVoice,
     setVoicePlayMode,
+    setVoiceEnabled,
+    setVoiceForGuide,
+    playGuideVoice,
+    refreshVoiceSchedule,
     toggleVoicePlay,
     stopVoicePlayback,
     playRandomVoice,
