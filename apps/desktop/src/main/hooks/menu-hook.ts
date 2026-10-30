@@ -15,8 +15,8 @@ const menu: Array<MenuItemConstructorOptions | MenuItem> = [
       },
       {
         label: '退出',
-        accelerator: 'CmdOrCtrl+F4',
-        role: 'close',
+        accelerator: 'CmdOrCtrl+Q',
+        role: 'quit',
       },
     ],
   },
