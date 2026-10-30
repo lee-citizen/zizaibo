@@ -23,8 +23,14 @@ import { ipc } from "@renderer/utils/ipcRenderer";
 import Sidebar from "@renderer/components/sidebar/sidebar.vue";
 import StatusBar from "@renderer/components/status-bar/status-bar.vue";
 import { onMounted } from "vue";
+import { useSpeechStore } from "@renderer/store/modules/speech";
+
+const speech = useSpeechStore();
+
 onMounted(() => {
   ipc.app.winReady();
+  // 首次启动自动选中系统默认播放设备
+  void speech.ensureDefaultOutputDevice();
 });
 </script>
 

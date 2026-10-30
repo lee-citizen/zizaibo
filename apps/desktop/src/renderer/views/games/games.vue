@@ -3,7 +3,10 @@
         <!-- 顶部标题 + 搜索 + 设置 -->
         <div class="px-8 pt-4 pb-4 space-y-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">游戏大厅</h1>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-2xl">🎮</span>
+                    <h1 class="text-2xl font-bold text-gray-800">游戏大厅</h1>
+                </div>
                 <p class="text-sm text-gray-500 mt-1">共 {{ filteredGames.length }} / {{ games.length }} 款小游戏</p>
             </div>
 
@@ -18,8 +21,7 @@
                 <p class="text-xs text-gray-400 mb-3">🔊 播放设备 · 绿色为当前选中</p>
                 <div v-if="audioDevices.length" class="flex flex-wrap gap-2">
                     <el-tag v-for="device in audioDevices" :key="device.deviceId"
-                        :type="device.isSelected ? 'success' : 'info'"
-                        :effect="device.isSelected ? 'dark' : 'plain'"
+                        :type="device.isSelected ? 'success' : 'info'" :effect="device.isSelected ? 'dark' : 'plain'"
                         size="large" round :closable="false">
                         <span class="flex items-center gap-1">
                             <span v-if="device.isSelected">✅</span>

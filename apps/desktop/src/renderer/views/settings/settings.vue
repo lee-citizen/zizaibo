@@ -103,7 +103,7 @@ const appVersion = pkg.version;
 const OUTPUT_DEVICE_KEY = "audio-output-device-id";
 const TTS_VOLUME_KEY = "tts-volume";
 const outputDevice = ref(localStorage.getItem(OUTPUT_DEVICE_KEY) || "");
-const ttsVolume = ref(Number(localStorage.getItem(TTS_VOLUME_KEY)) || 80);
+const ttsVolume = ref(localStorage.getItem(TTS_VOLUME_KEY) !== null ? Number(localStorage.getItem(TTS_VOLUME_KEY)) : 100);
 const audioDevices = ref<MediaDeviceInfo[]>([]);
 
 // 持久化：输出设备切换

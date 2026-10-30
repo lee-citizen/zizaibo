@@ -313,22 +313,72 @@ export const useSpeechStore = defineStore("speech", () => {
     isSpeaking.value = false;
   }
 
-  /** 读取用户设置的 TTS 音量（0~1），默认 0.8 */
+  /** 读取用户设置的 TTS 音量（0~1），默认 1.0（最大音量） */
   function getTtsVolume(): number {
-    const v = Number(localStorage.getItem("tts-volume"));
-    return Number.isFinite(v) ? Math.max(0, Math.min(1, v / 100)) : 0.8;
+    const raw = localStorage.getItem("tts-volume");
+    if (raw === null) return 1.0; // 未设置过，默认最大音量
+    const v = Number(raw);
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v / 100)) : 1.0;
   }
 
-  /** 把音频元素的输出设备切到用户选择的设备 */
+  /** 把音频元素的输出设备切到用户选择的设备。带超时保护，避免 setSinkId 卡住导致播放永远不开始。 */
   async function applyOutputDevice(audioEl: HTMLAudioElement): Promise<void> {
     const deviceId = localStorage.getItem("audio-output-device-id") || "";
-    if (deviceId && deviceId !== "default" && typeof audioEl.setSinkId === "function") {
-      try {
-        await audioEl.setSinkId(deviceId);
-      } catch {
-        /* 设备不存在时忽略 */
-      }
+    if (!deviceId || deviceId === "default") return;
+    if (typeof audioEl.setSinkId !== "function") return;
+    try {
+      await Promise.race([
+        audioEl.setSinkId(deviceId),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("sinkId timeout")), 1000)),
+      ]);
+    } catch {
+      /* 设备不存在/超时：忽略，继续用默认设备播放 */
     }
+  }
+
+  /**
+   * 应用启动时自动选中系统默认播放设备。
+   * 仅当能精确匹配到系统默认设备时才设置，避免选错设备导致无声。
+   * 匹配不到时不设置，音频走系统默认输出（setSinkId 不调用）。
+   */
+  async function ensureDefaultOutputDevice(): Promise<void> {
+    const saved = localStorage.getItem("audio-output-device-id");
+    if (saved) return; // 已有选择，不覆盖
+
+    try {
+      // 先触发一次 getUserMedia，让 enumerateDevices 能拿到 label
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+      } catch { /* 忽略 */ }
+
+      const list = await navigator.mediaDevices.enumerateDevices();
+      const seen = new Set<string>();
+      const devices = list
+        .filter((d) => d.kind === "audiooutput")
+        .filter((d) => {
+          if (!d.label || !d.deviceId) return false;
+          if (/^(default|system)\b/i.test(d.label)) return false;
+          const key = d.label.toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+      if (devices.length === 0) return;
+
+      // 拿系统默认设备名，精确匹配才设置；匹配不到则不设置（走系统默认输出）
+      try {
+        const defaultName: string | null = await ipc.app.getDefaultAudioDevice();
+        const matched = defaultName
+          ? devices.find((d) => d.label.toLowerCase().includes(defaultName.toLowerCase()))
+          : null;
+        if (matched) {
+          localStorage.setItem("audio-output-device-id", matched.deviceId);
+          window.dispatchEvent(new CustomEvent("audio-output-device-change", { detail: matched.deviceId }));
+        }
+      } catch { /* 忽略 */ }
+    } catch { /* 忽略 */ }
   }
 
   /** 播放一段 base64 mp3（edge-tts 结果） */
@@ -347,10 +397,23 @@ export const useSpeechStore = defineStore("speech", () => {
       // 监听输出设备切换
       window.addEventListener("audio-output-device-change", () => void applyOutputDevice(edgeAudio!));
     }
+    // 暂停当前播放；设置新 src 会自动中断旧播放并加载新音频
+    edgeAudio.pause();
     await applyOutputDevice(edgeAudio);
     edgeAudio.volume = getTtsVolume();
     edgeAudio.src = url;
-    await edgeAudio.play();
+    try {
+      await edgeAudio.play();
+    } catch (err) {
+      // 播放被新请求中断（AbortError / interrupted）属正常情况，不视为错误
+      const name = err instanceof Error ? err.name : "";
+      const msg = err instanceof Error ? err.message : String(err);
+      if (name === "AbortError" || msg.includes("interrupted")) {
+        return;
+      }
+      isSpeaking.value = false;
+      throw err;
+    }
   }
 
   /** 把当前选中的声音映射为 edge-tts 可用的 ShortName。
@@ -981,6 +1044,7 @@ export const useSpeechStore = defineStore("speech", () => {
     speak,
     stopSpeaking,
     applyPreset,
+    ensureDefaultOutputDevice,
     saveTts,
     previewGeneratedVoice,
     saveGeneratedVoice,

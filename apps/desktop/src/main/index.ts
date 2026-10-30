@@ -44,6 +44,9 @@ if (!gotTheLock) {
   });
 }
 
+// 允许音频无需用户手势即可播放（弹幕自动朗读、时钟播报等场景）
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+
 function onAppReady() {
   // 放行麦克风权限：现场录音功能需要 MediaRecorder + getUserMedia
   // （webSecurity: false 下多数情况自动放行，此处显式处理以兼容 macOS 权限弹窗）
