@@ -11,6 +11,7 @@ import router from "./router";
 import { errorHandler } from "./error";
 import { useBgmStore } from "./store/modules/bgm";
 import { useSpeechStore } from "./store/modules/speech";
+import { useClockStore } from "./store/modules/clock";
 
 import { i18n } from "./i18n";
 
@@ -28,5 +29,8 @@ useBgmStore(store).init();
 
 // 智能朗读：加载系统语音列表与用户语音库（引导定时器随启用状态启动）
 useSpeechStore(store).init();
+
+// 自动报时：恢复报时设置（若上次处于开启状态则继续整点排程）
+useClockStore(store).init();
 
 app.mount("#app");
