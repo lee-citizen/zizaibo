@@ -38,6 +38,35 @@ export function getDefaultOutputDeviceName(): string | null {
   }
 }
 
+/** 检测虚拟声卡是否已安装，返回设备名（未安装返回 null）
+ *  macOS: BlackHole
+ *  Windows: VB-CABLE (CABLE Input / CABLE Output)
+ */
+export function detectVirtualAudioDevice(): string | null {
+  try {
+    if (process.platform === 'darwin') {
+      // BlackHole 设备名包含 "BlackHole"
+      const out = execSync(
+        `system_profiler SPAudioDataType 2>/dev/null | grep -i "BlackHole" | head -1 | sed 's/^[[:space:]]*//' | sed 's/:$//'`,
+        { encoding: 'utf-8' }
+      ).trim()
+      console.log('[audio] 检测 BlackHole:', out || '(未安装)')
+      return out || null
+    }
+    else if (process.platform === 'win32') {
+      // VB-CABLE 设备名包含 "CABLE"
+      const ps = `Get-PnpDevice -Class AudioEndpoint | Where-Object {$_.FriendlyName -match 'CABLE'} | Select-Object -First 1 -ExpandProperty FriendlyName`
+      const out = execSync(`powershell -NoProfile -Command "${ps}"`, { encoding: 'utf-8' }).trim()
+      console.log('[audio] 检测 VB-CABLE:', out || '(未安装)')
+      return out || null
+    }
+    return null
+  } catch (e) {
+    console.error('[audio] 检测虚拟声卡失败:', e)
+    return null
+  }
+}
+
 /** 打开系统音量合成器/声音设置（跨平台） */
 export function openSystemMixer(): void {
   try {

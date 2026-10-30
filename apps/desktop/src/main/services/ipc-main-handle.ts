@@ -1,4 +1,4 @@
-import { dialog, BrowserWindow, app } from "electron";
+import { dialog, BrowserWindow, app, shell } from "electron";
 import { winURL, staticPaths } from "../config/static-path";
 import DownloadFile from "../services/download-file";
 import Update from "../services/check-update";
@@ -8,7 +8,7 @@ import { webContentSend } from "./web-content-send";
 import { IsUseSysTitle } from "@main/config/const";
 import { otherWindowConfig } from "@main/config/windows-config";
 import { openGameWindow } from "./game-window";
-import { getDefaultOutputDeviceName, openSystemMixer } from "./audio-devices";
+import { getDefaultOutputDeviceName, openSystemMixer, detectVirtualAudioDevice } from "./audio-devices";
 import { getMachineId } from "./machine-id";
 import {
   addUserMusic,
@@ -26,6 +26,14 @@ import {
   setVoiceMeta,
 } from "./user-voice";
 import { edgeTtsSynthesize } from "./tts-edge";
+import {
+  connectOpenRoom,
+  connectCloseRoom,
+  connectStart,
+  connectPull,
+  connectStop,
+  connectDiagnose,
+} from "./connect-danmaku";
 
 import Store from "electron-store";
 
@@ -37,6 +45,7 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
     openGameWindow(args.url, args.title, {
       mute: args.mute,
       volume: args.volume,
+      sinkDeviceId: args.sinkDeviceId,
     });
   },
   getDefaultAudioDevice: () => {
@@ -44,6 +53,12 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   openSystemMixer: () => {
     openSystemMixer();
+  },
+  detectVirtualAudioDevice: () => {
+    return detectVirtualAudioDevice();
+  },
+  openExternalUrl: (_event, url: string) => {
+    shell.openExternal(url);
   },
   getMachineId: () => {
     return getMachineId();
@@ -86,6 +101,25 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
 
   edgeTtsSynthesize: async (_event, args) => {
     return edgeTtsSynthesize(args);
+  },
+
+  connectOpenRoom: (_event, args) => {
+    return connectOpenRoom(args);
+  },
+  connectCloseRoom: (_event, args) => {
+    connectCloseRoom(args);
+  },
+  connectStart: (_event, args) => {
+    connectStart(args);
+  },
+  connectStop: (_event, args) => {
+    connectStop(args);
+  },
+  connectPull: async (_event, args) => {
+    return connectPull(args);
+  },
+  connectDiagnose: async (_event, args) => {
+    return connectDiagnose(args);
   },
 
   startDownload: (event, downloadUrl) => {

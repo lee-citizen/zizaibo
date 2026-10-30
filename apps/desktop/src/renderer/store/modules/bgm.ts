@@ -200,6 +200,17 @@ export const useBgmStore = defineStore("bgm", () => {
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
 
+    // 应用用户选择的输出设备，并监听切换
+    const applyDevice = () => {
+      if (!audio) return;
+      const deviceId = localStorage.getItem("audio-output-device-id") || "";
+      if (deviceId && deviceId !== "default" && typeof audio.setSinkId === "function") {
+        audio.setSinkId(deviceId).catch(() => { /* 设备不存在时忽略 */ });
+      }
+    };
+    applyDevice();
+    window.addEventListener("audio-output-device-change", applyDevice);
+
     // 加载元数据 + 对账磁盘
     try {
       const [meta, diskList] = await Promise.all([ipc.app.getMusicMeta(), ipc.app.listUserMusic()]);

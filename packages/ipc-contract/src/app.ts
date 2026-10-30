@@ -72,6 +72,10 @@ export interface AppContract {
   getDefaultAudioDevice(): string | null;
   /** 打开系统音量合成器/声音设置 */
   openSystemMixer(): void;
+  /** 检测虚拟声卡是否已安装，返回设备名（未安装返回 null） */
+  detectVirtualAudioDevice(): string | null;
+  /** 用系统默认浏览器打开外部链接（兼容 mac/win） */
+  openExternalUrl(url: string): void;
   /** 获取本机机器码（基于 app.getMachineId 的硬件指纹） */
   getMachineId(): string;
 
@@ -102,6 +106,20 @@ export interface AppContract {
 
   /** 调用 edge-tts（微软 Edge 在线 TTS）合成语音，返回 base64 编码的 mp3 音频 */
   edgeTtsSynthesize(args: EdgeTtsArgs): EdgeTtsResult;
+
+  // ---------- 连接直播（connect）----------
+  /** 打开直播间独立窗口（persist 会话保持登录），返回 windowId */
+  connectOpenRoom(args: ConnectOpenRoomArgs): ConnectOpenRoomResult;
+  /** 关闭直播间窗口 */
+  connectCloseRoom(args: ConnectStopArgs): void;
+  /** 开始监听直播间窗口内的弹幕，installScript 由渲染层注入到所有子 frame */
+  connectStart(args: ConnectStartArgs): void;
+  /** 停止监听并清理会话（不关窗口） */
+  connectStop(args: ConnectStopArgs): void;
+  /** 拉取一轮弹幕/人数数据（渲染层定时轮询，主进程遍历所有子 frame 汇总） */
+  connectPull(args: ConnectStopArgs): ConnectPullResult | null;
+  /** 收集直播间窗口所有 frame 的页面结构诊断信息（用于校准弹幕选择器） */
+  connectDiagnose(args: ConnectDiagnoseArgs): ConnectDiagnoseResult;
 }
 
 /** deleteUserMusic 的载荷 */
@@ -113,6 +131,79 @@ export interface DeleteUserMusicArgs {
 /** setMusicMeta 的载荷 */
 export interface SetMusicMetaArgs {
   meta: MusicMeta;
+}
+
+// ===================== 连接直播（connect）=====================
+
+/** 单条弹幕 */
+export interface DanmakuMsg {
+  /** 用户昵称（抓不到为空串，展示时不显示昵称前缀） */
+  user: string;
+  /** 发送人 id（优先 sec_uid，其次数字 id，抓不到为空串） */
+  uid: string;
+  /** 用户等级（如 "32"，抓不到为空串） */
+  level: string;
+  /** 等级徽章图片 URL（抓不到为空串） */
+  levelImg: string;
+  /** 粉丝团灯牌图片 URL（抓不到为空串） */
+  fansImg: string;
+  /** 弹幕/礼物/进场文本 */
+  text: string;
+  /** 整条弹幕的 HTML（含等级徽章、粉丝团灯牌、昵称、内容、emoji） */
+  html: string;
+  /** 时间戳（ms） */
+  ts: number;
+}
+
+/** connectOpenRoom 的载荷 */
+export interface ConnectOpenRoomArgs {
+  /** 直播间地址（渲染层已归一化校验） */
+  url: string;
+}
+
+/** connectOpenRoom 的返回 */
+export interface ConnectOpenRoomResult {
+  /** 直播间窗口的 webContents id，后续 start/pull/close 都用它 */
+  windowId: number;
+}
+
+/** connectStart 的载荷 */
+export interface ConnectStartArgs {
+  /** 直播间窗口的 webContents id */
+  windowId: number;
+  /** 注入脚本（自包含、幂等，执行即安装采集器并返回一轮数据） */
+  installScript: string;
+}
+
+/** connectStop / connectPull 的载荷 */
+export interface ConnectStopArgs {
+  windowId: number;
+}
+
+/** connectPull 的返回：主进程遍历所有子 frame 汇总后的结果 */
+export interface ConnectPullResult {
+  /** 本轮新弹幕 */
+  msgs: DanmakuMsg[];
+  /** 观看人数原始文本（如 "1.2万"），空表示暂未抓到 */
+  viewer: string;
+  /** 弹幕容器是否已绑定采集器 */
+  ready: boolean;
+  /** 最近一条弹幕的时间戳 */
+  lastMsgAt: number;
+  /** emoji 标记 -> 图片地址（把弹幕里的 [标记] 还原成表情图） */
+  emojiMap: Record<string, string>;
+}
+
+/** connectDiagnose 的载荷：对直播间窗口所有 frame 执行诊断脚本 */
+export interface ConnectDiagnoseArgs {
+  windowId: number;
+  /** 诊断脚本（自包含，返回一段诊断文本） */
+  diagnoseScript: string;
+}
+
+/** connectDiagnose 的返回：每个 frame 一段诊断文本 */
+export interface ConnectDiagnoseResult {
+  reports: string[];
 }
 
 // ===================== 智能朗读（speech）=====================
@@ -219,4 +310,6 @@ export interface OpenGameWindowArgs {
   mute?: boolean;
   /** 音量 0~1，默认 1 */
   volume?: number;
+  /** 音频输出设备 ID（setSinkId），不传则用系统默认 */
+  sinkDeviceId?: string;
 }

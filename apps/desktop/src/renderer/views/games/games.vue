@@ -15,16 +15,17 @@
 
             <!-- 🔊 播放设备（直接展示） -->
             <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                <p class="text-xs text-gray-400 mb-3">🔊 播放设备 · 系统默认已高亮</p>
+                <p class="text-xs text-gray-400 mb-3">🔊 播放设备 · 绿色为当前选中</p>
                 <div v-if="audioDevices.length" class="flex flex-wrap gap-2">
                     <el-tag v-for="device in audioDevices" :key="device.deviceId"
-                        :type="device.isDefault ? 'warning' : 'info'" :effect="device.isDefault ? 'dark' : 'plain'"
+                        :type="device.isSelected ? 'success' : 'info'"
+                        :effect="device.isSelected ? 'dark' : 'plain'"
                         size="large" round :closable="false">
                         <span class="flex items-center gap-1">
-                            <span v-if="device.isDefault">🔊</span>
+                            <span v-if="device.isSelected">✅</span>
                             <span v-else>🔈</span>
                             {{ device.label || '未知设备' }}
-                            <span v-if="device.isDefault" class="ml-1 opacity-80">· 默认</span>
+                            <span v-if="device.isSelected" class="ml-1 opacity-80">· 已选</span>
                         </span>
                     </el-tag>
                 </div>
@@ -148,7 +149,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import gamesData from '../../public/games.json'
 
 interface Game {
     id: string
@@ -169,6 +171,7 @@ interface AudioDeviceInfo {
     deviceId: string
     label: string
     isDefault: boolean
+    isSelected: boolean
 }
 
 const STORAGE_KEY = 'game-settings'
@@ -214,11 +217,13 @@ function showTips(game: Game) {
 }
 
 function openGame(game: Game) {
+    const sinkDeviceId = localStorage.getItem('audio-output-device-id') || ''
     window.ipcBridge.invoke('app:openGameWindow', {
         url: game.url,
         title: game.name,
         mute: settings.value.mute,
         volume: settings.value.volume / 100,
+        sinkDeviceId: sinkDeviceId !== 'default' ? sinkDeviceId : '',
     })
 }
 
@@ -228,13 +233,8 @@ function startGameFromDialog() {
     tipsVisible.value = false
 }
 
-async function loadGames() {
-    try {
-        const res = await fetch('/games.json')
-        games.value = await res.json()
-    } catch (e) {
-        console.error('加载游戏列表失败:', e)
-    }
+function loadGames() {
+    games.value = gamesData as Game[]
 }
 
 // ============ 🔊 播放设备相关 ============
@@ -285,6 +285,7 @@ async function loadAudioDevices() {
 
         const normalizedDefault = defaultName ? normalize(defaultName) : ''
 
+        const selectedId = localStorage.getItem('audio-output-device-id') || 'default'
         audioDevices.value = outputs.map(d => {
             const label = d.label || d.deviceId
             const normalizedLabel = normalize(label)
@@ -294,7 +295,8 @@ async function loadAudioDevices() {
                 normalizedLabel.includes(normalizedDefault) ||
                 normalizedDefault.includes(normalizedLabel)
             )
-            return { deviceId: d.deviceId, label, isDefault }
+            const isSelected = selectedId === d.deviceId || (selectedId === 'default' && isDefault)
+            return { deviceId: d.deviceId, label, isDefault, isSelected }
         })
 
         console.log('[audio] 最终设备列表:', audioDevices.value)
@@ -309,8 +311,22 @@ async function loadAudioDevices() {
 
 onMounted(() => {
     loadGames()
-    loadAudioDevices()  // 加这行，页面打开就加载
+    loadAudioDevices()
+    // 监听设置页的输出设备切换，实时更新选中状态
+    window.addEventListener('audio-output-device-change', onDeviceChange)
 })
+
+onUnmounted(() => {
+    window.removeEventListener('audio-output-device-change', onDeviceChange)
+})
+
+function onDeviceChange(e: Event) {
+    const newId = (e as CustomEvent).detail as string
+    audioDevices.value = audioDevices.value.map(d => ({
+        ...d,
+        isSelected: d.deviceId === newId,
+    }))
+}
 </script>
 
 <style lang="scss" scoped>

@@ -25,14 +25,17 @@
             <span
               class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-xs text-white/90"
             >
-              <span class="w-2 h-2 rounded-full bg-gray-300" />
-              未连接直播
+              <span
+                class="w-2 h-2 rounded-full"
+                :class="connect.connected ? 'bg-green-400' : 'bg-gray-300'"
+              />
+              {{ connect.connected ? '已连接直播' : '未连接直播' }}
             </span>
             <button
               class="px-4 py-2 rounded-lg bg-white text-blue-600 text-sm font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
               @click="router.push('/connect')"
             >
-              连接直播
+              {{ connect.connected ? '直播间' : '连接直播' }}
             </button>
           </div>
         </div>
@@ -107,8 +110,10 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useConnectStore } from "@renderer/store/modules/connect";
 
 const router = useRouter();
+const connect = useConnectStore();
 
 // ---------- 时间问候 ----------
 const now = ref(new Date());

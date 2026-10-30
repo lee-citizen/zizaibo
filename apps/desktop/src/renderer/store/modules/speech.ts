@@ -338,6 +338,24 @@ export const useSpeechStore = defineStore("speech", () => {
     isSpeaking.value = false;
   }
 
+  /** 读取用户设置的 TTS 音量（0~1），默认 0.8 */
+  function getTtsVolume(): number {
+    const v = Number(localStorage.getItem("tts-volume"));
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v / 100)) : 0.8;
+  }
+
+  /** 把音频元素的输出设备切到用户选择的设备 */
+  async function applyOutputDevice(audioEl: HTMLAudioElement): Promise<void> {
+    const deviceId = localStorage.getItem("audio-output-device-id") || "";
+    if (deviceId && deviceId !== "default" && typeof audioEl.setSinkId === "function") {
+      try {
+        await audioEl.setSinkId(deviceId);
+      } catch {
+        /* 设备不存在时忽略 */
+      }
+    }
+  }
+
   /** 播放一段 base64 mp3（edge-tts 结果） */
   async function playEdgeAudio(base64: string): Promise<void> {
     const blob = base64ToBlob(base64, "audio/mpeg");
@@ -351,7 +369,11 @@ export const useSpeechStore = defineStore("speech", () => {
         isSpeaking.value = false;
         ElMessage.error({ message: "音频播放失败", offset: 40 });
       };
+      // 监听输出设备切换
+      window.addEventListener("audio-output-device-change", () => void applyOutputDevice(edgeAudio!));
     }
+    await applyOutputDevice(edgeAudio);
+    edgeAudio.volume = getTtsVolume();
     edgeAudio.src = url;
     await edgeAudio.play();
   }
@@ -403,6 +425,7 @@ export const useSpeechStore = defineStore("speech", () => {
     if (v) u.voice = v;
     u.rate = rate.value;
     u.pitch = hzToPitch(pitchHz.value);
+    u.volume = getTtsVolume();
     u.lang = v?.lang ?? "zh-CN";
     u.onstart = () => {
       isSpeaking.value = true;
@@ -863,12 +886,13 @@ export const useSpeechStore = defineStore("speech", () => {
   function ensureGuideAudio(): HTMLAudioElement {
     if (!guideAudio) {
       guideAudio = new Audio();
+      window.addEventListener("audio-output-device-change", () => void applyOutputDevice(guideAudio!));
     }
     return guideAudio;
   }
 
   /** 引导播报：按播报方式取一条「我的语音」，用独立 Audio 播放（与循环播放互不干扰） */
-  function playGuideVoice(): void {
+  async function playGuideVoice(): Promise<void> {
     if (voiceTracks.value.length === 0) return;
     let idx: number;
     if (voicePlayMode.value === "fixed") {
@@ -883,6 +907,8 @@ export const useSpeechStore = defineStore("speech", () => {
     }
     guideVoiceIndex.value = idx;
     const a = ensureGuideAudio();
+    await applyOutputDevice(a);
+    a.volume = getTtsVolume();
     a.src = voiceTracks.value[idx].url;
     a.play().catch(() => {
       /* 忽略：自动播放被拒等场景 */

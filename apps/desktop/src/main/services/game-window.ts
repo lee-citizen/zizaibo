@@ -10,9 +10,9 @@ let currentGameWin: BrowserWindow | null = null
 export function openGameWindow(
   url: string,
   title?: string,
-  options: { mute?: boolean; volume?: number } = {},
+  options: { mute?: boolean; volume?: number; sinkDeviceId?: string } = {},
 ) {
-  const { mute = false, volume = 1 } = options
+  const { mute = false, volume = 1, sinkDeviceId = '' } = options
 
   // 如果已经有了就先关
   if (currentGameWin && !currentGameWin.isDestroyed()) {
@@ -50,30 +50,49 @@ export function openGameWindow(
   // 如果没静音，额外注脚本拦截 Web Audio API（部分游戏需要）
   if (!mute) {
     const v = Math.max(0, Math.min(1, volume))
+    const sinkId = JSON.stringify(sinkDeviceId)
     const patchScript = `
       (function() {
-        const v = ${v};
+        var v = ${v};
+        var sinkId = ${sinkId};
         // 拦截 Web Audio API
-        const _AC = window.AudioContext;
+        var _AC = window.AudioContext;
         if (_AC && !_AC.__patched) {
-          const proto = _AC.prototype;
+          var proto = _AC.prototype;
           if (proto.createGain && proto.createGain.__wrapped !== true) {
-            const origCreateGain = proto.createGain;
+            var origCreateGain = proto.createGain;
             proto.createGain = function() {
-              const node = origCreateGain.apply(this, arguments);
+              var node = origCreateGain.apply(this, arguments);
               try { node.gain.value = v; } catch(e) {}
               return node;
             };
             proto.createGain.__wrapped = true;
           }
+          // 给 AudioContext 设置输出设备（setSinkId，Chrome/Edge 支持）
+          if (sinkId && proto.setSinkId) {
+            var origResume = proto.resume;
+            proto.resume = function() {
+              var r = origResume.apply(this, arguments);
+              if (this.sinkId !== sinkId) {
+                this.setSinkId(sinkId).catch(function(){});
+              }
+              return r;
+            };
+          }
           _AC.__patched = true;
         }
         // 同时处理 DOM 媒体元素（万一有）
-        function applyVol() {
-          document.querySelectorAll('audio, video').forEach(el => { el.volume = v; el.muted = false; });
+        function applyMedia() {
+          document.querySelectorAll('audio, video').forEach(function(el) {
+            el.volume = v;
+            el.muted = false;
+            if (sinkId && el.setSinkId && el.sinkId !== sinkId) {
+              el.setSinkId(sinkId).catch(function(){});
+            }
+          });
         }
-        applyVol();
-        const mo = new MutationObserver(applyVol);
+        applyMedia();
+        var mo = new MutationObserver(applyMedia);
         mo.observe(document.documentElement, { childList: true, subtree: true });
       })();
     `
