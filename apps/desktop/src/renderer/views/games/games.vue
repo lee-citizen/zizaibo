@@ -58,7 +58,7 @@
                 class="game-card group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-blue-200 hover:-translate-y-1"
                 @click="showTips(game)">
                 <!-- 封面 -->
-                <div class="relative aspect-[4/3] overflow-hidden">
+                <div class="relative aspect-[4/3] h-40 overflow-hidden">
                     <img v-if="game.cover && !errorIds.has(game.id)" :src="game.cover" :alt="game.name"
                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         loading="lazy" @error="errorIds.add(game.id)" />
@@ -236,7 +236,19 @@ function startGameFromDialog() {
 }
 
 function loadGames() {
-    games.value = gamesData as Game[]
+
+    // games.value = gamesData as Game[]
+    let gameList = gamesData.map((game: any) => {
+        return {
+            id: game.id,
+            name: game.name,
+            url: game.url,
+            cover: '/cover-imgs/' + game.id + '.png',
+            tips: game.tips,
+            tips_images: game.tips_images,
+        }
+    })
+    games.value = gameList as Game[]
 }
 
 // ============ 🔊 播放设备相关 ============

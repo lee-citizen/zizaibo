@@ -1764,19 +1764,6 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-
-  {
-    "id": "g_1791601650187",
-    "name": "飞刀弹弹弹",
-    "url": "https://static.zuiqiangyingyu.cn/wb_webview/h5base/hftdtt/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "点击左上角空白位置开启自动",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
   {
     "id": "g_1791601650188",
     "name": "消除我最行",
@@ -1801,18 +1788,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650190",
-    "name": "破坏大师",
-    "url": "https://w25.xiaoyouxi.co/trapmaster/H5_250714/web-mobile",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "点击设置，点击设定两字，开启自动液压",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+ 
   {
     "id": "g_1791601650191",
     "name": "这关包好玩的",
@@ -1982,18 +1958,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650207",
-    "name": "挑战消除赛",
-    "url": "https://cdn.dengyou.net/unity-Sorting-Game/web-qiniu-douyin-mist/1.229.3/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "GM面板开启自动闯关",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+
   {
     "id": "g_1791601650208",
     "name": "爆料麻辣烫",
@@ -2150,18 +2115,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650221",
-    "name": "挖土打个洞",
-    "url": "https://h5.cjs001.com/game/SandQueue/Main/",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "设置→高级设置，开启自动模式",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+
   {
     "id": "g_1791601650222",
     "name": "智商100分",
@@ -2234,18 +2188,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650228",
-    "name": "剧情操作大师",
-    "url": "http://playable.shibby.fun/playable/weikongzhaocha/H5_normal/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "进设置GM面板打开自动",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+
   {
     "id": "g_1791601650229",
     "name": "最强疯狂找茬2",
@@ -2416,18 +2359,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650244",
-    "name": "打工生活模拟器",
-    "url": "https://gamesres.ultralisk.cn/h5_games_daren/168_1787623244905/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "可以自动播；支持深夜食堂、刮鱼鳞、失物招领、沙威面、抓猪模式",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+
   {
     "id": "g_1791601650245",
     "name": "烧脑找找茬",
@@ -2538,7 +2470,7 @@
   },
   {
     "id": "g_1791601650254",
-    "name": "做个老板",
+    "name": "做个老板-横屏",
     "url": "https://cos.umgame.cn/minigame_preview/10895/h5-auto-0.1.9/index.html?isAutoPlayer=true",
     "script": [],
     "vbs": "",
@@ -2574,7 +2506,7 @@
   },
   {
     "id": "g_1791601650257",
-    "name": "木棍人大作战",
+    "name": "木棍人大作战-横屏",
     "url": "https://cos.umgame.cn/minigame_preview/10920/webjump/webjumpnetHorizontalShjCl/web10920/index.html",
     "script": [],
     "vbs": "",
@@ -2788,18 +2720,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1792157362135",
-    "name": "生肖挖挖乐",
-    "url": "https://6ge.chat/sxwwl/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "portrait",
-    "tips": "自动开启方式：点左上角齿轮打开设置，点高级设置，开启自动",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+ 
   {
     "id": "g_1792157753034",
     "name": "解救计划",
