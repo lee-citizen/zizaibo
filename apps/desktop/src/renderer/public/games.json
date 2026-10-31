@@ -990,13 +990,13 @@
   },
   {
     "id": "g_1786678074826",
-    "name": "daji朝我开炮",
+    "name": "朝我开炮",
     "url": "http://ymgames.moyuhuyou.cn/zidong/cwkp3D/index1.html",
     "script": [],
     "vbs": "",
     "toolkit": null,
     "orientation": "",
-    "tips": "daji朝我开炮自动版本",
+    "tips": "朝我开炮自动版本",
     "cover": "https://yx.yuange789.top/uploads/game83_1789361422.png"
   },
   {
@@ -1244,7 +1244,7 @@
   },
   {
     "id": "g_1786678667688",
-    "name": "箭一箭消除",
+    "name": "全民来消除",
     "url": "https://cdn1.pkfj.xyz/game/jt_dy4/index.html",
     "script": [],
     "vbs": "",
@@ -1254,18 +1254,7 @@
     "cover": "https://yx.yuange789.top/uploads/game102_1789361724.png",
     "tips_edited": true
   },
-  {
-    "id": "g_1786678725520",
-    "name": "脑洞画线我最强",
-    "url": "https://cosartresources.zywxgames.com/users/yj/wgh/26_7/web/ndhxwzq/7_30/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "喂食企鹅妹，新增自动挂机功能，进入关卡后点击红色返回键，点击auto启用",
-    "cover": "https://yx.yuange789.top/uploads/game103_1789361729.png",
-    "tips_edited": true
-  },
+
   {
     "id": "g_1786678770573",
     "name": "来玩安静书",
@@ -1775,18 +1764,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650185",
-    "name": "指尖战斗家",
-    "url": "https://test-d4gyhz4mxeb248025-1251260145.tcloudbaseapp.com/shootdie/index.html",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "点击中间武器名称5次，弹出GM面板",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+
   {
     "id": "g_1791601650187",
     "name": "飞刀弹弹弹",
@@ -1943,18 +1921,7 @@
     "tips_images": [],
     "_updAt": 1792652406997
   },
-  {
-    "id": "g_1791601650201",
-    "name": "每日消除",
-    "url": "https://z.pasq.com/mrxc/wg03/",
-    "script": [],
-    "vbs": "",
-    "toolkit": null,
-    "orientation": "",
-    "tips": "GM面板打开自动闯关",
-    "tips_images": [],
-    "_updAt": 1792652406997
-  },
+
   {
     "id": "g_1791601650202",
     "name": "燃爆了鸭",

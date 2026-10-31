@@ -4,6 +4,10 @@ import { IsUseSysTitle } from '@main/config/const'
 const GAME_WIN_WIDTH = 393
 const GAME_WIN_HEIGHT = 800
 
+// 桌面端 Chrome UA：与浏览器直接访问一致，避免移动版页面的触摸逻辑干扰点击
+const DESKTOP_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+
 // 记录当前打开的游戏窗口（避免重复开多个）
 let currentGameWin: BrowserWindow | null = null
 
@@ -36,9 +40,70 @@ export function openGameWindow(
       nodeIntegration: false,
       sandbox: false,
       webSecurity: false,
+      allowRunningInsecureContent: true,
       devTools: process.env.NODE_ENV === 'development',
     },
   })
+
+  // 1. 设置桌面端 Chrome UA：与浏览器直接访问行为一致
+  gameWin.webContents.setUserAgent(DESKTOP_UA)
+
+  // 2. 注入：隐藏滚动条
+  const injectNoScroll = () => {
+    if (gameWin.isDestroyed()) return
+    gameWin.webContents
+      .executeJavaScript(`
+        (function() {
+          try {
+            var s = document.createElement('style');
+            s.textContent = 'html,body{margin:0;padding:0;overflow:hidden!important}' +
+              '::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}' +
+              'body{-ms-overflow-style:none;scrollbar-width:none}';
+            document.head.appendChild(s);
+          } catch(e){}
+        })();
+      `)
+      .catch(() => {})
+  }
+
+  // 3. 用 Electron 原生 zoom 缩放页面到窗口宽度（浏览器级缩放，对 Canvas/WebGL 友好）
+  const fitToWindowByZoom = () => {
+    if (gameWin.isDestroyed()) return
+    gameWin.webContents
+      .executeJavaScript(`
+        (function() {
+          try {
+            return Math.max(
+              document.documentElement.scrollWidth,
+              document.body ? document.body.scrollWidth : 0,
+              1
+            );
+          } catch(e) { return 1; }
+        })();
+      `)
+      .then((contentWidth: number) => {
+        if (gameWin.isDestroyed()) return
+        if (contentWidth > GAME_WIN_WIDTH) {
+          const zoom = GAME_WIN_WIDTH / contentWidth
+          gameWin.webContents.setZoomFactor(zoom)
+          console.log(`[game] 缩放: ${zoom.toFixed(3)} (内容宽 ${contentWidth} / 窗口 ${GAME_WIN_WIDTH})`)
+        } else {
+          gameWin.webContents.setZoomFactor(1)
+        }
+      })
+      .catch(() => {})
+  }
+
+  // 每次导航完成后重新注入 + 缩放（重试几次应对异步渲染的游戏）
+  const onLoaded = () => {
+    injectNoScroll()
+    fitToWindowByZoom()
+    setTimeout(fitToWindowByZoom, 500)
+    setTimeout(fitToWindowByZoom, 1500)
+    setTimeout(fitToWindowByZoom, 3500)
+  }
+  gameWin.webContents.on('did-finish-load', onLoaded)
+  gameWin.webContents.on('did-navigate', onLoaded)
 
   gameWin.loadURL(url)
   gameWin.once('ready-to-show', () => gameWin.show())
