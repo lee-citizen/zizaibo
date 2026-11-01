@@ -15,6 +15,8 @@
                     <!-- 搜索框 -->
                     <el-input v-model="keyword" placeholder="搜索游戏名称..." clearable class="w-72" prefix-icon="Search"
                         size="default" />
+
+
                 </div>
 
                 <!-- 🔊 播放设备（直接展示） -->
@@ -50,6 +52,22 @@
                         <el-slider v-model="settings.volume" :min="0" :max="100" :step="1" :disabled="settings.mute"
                             show-input class="flex-1" />
                     </div>
+
+
+                    <!-- 仅看收藏 -->
+                    <button
+                        class="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200"
+                        :class="showOnlyFavorites
+                            ? 'bg-amber-400 border-amber-400 text-white shadow-sm'
+                            : 'bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-500'"
+                        @click="toggleFavoriteFilter">
+                        <el-icon class="text-base">
+                            <StarFilled v-if="showOnlyFavorites" />
+                            <Star v-else />
+                        </el-icon>
+                        <span>仅看收藏</span>
+                        <span v-if="favorites.length" class="ml-0.5 text-xs opacity-80">{{ favorites.length }}</span>
+                    </button>
                 </div>
             </div>
 
@@ -72,6 +90,17 @@
                             </svg>
                             <span class="text-xs">{{ game.name }}</span>
                         </div>
+
+                        <!-- 收藏按钮（左上角） -->
+                        <button
+                            class="absolute top-2 left-2 w-7 h-7 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-all duration-200 z-10 hover:scale-110"
+                            :title="isFavorite(game.id) ? '取消收藏' : '收藏'" @click.stop="toggleFavorite(game.id)">
+                            <el-icon class="text-base"
+                                :class="isFavorite(game.id) ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'">
+                                <StarFilled v-if="isFavorite(game.id)" />
+                                <Star v-else />
+                            </el-icon>
+                        </button>
 
                         <!-- hover 遮罩：开始游戏按钮 -->
                         <button
@@ -165,8 +194,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { Top } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { Top, Star, StarFilled } from '@element-plus/icons-vue'
 import gamesData from '../../public/games.json'
 
 interface Game {
@@ -250,11 +279,77 @@ watch(settings, (val) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
 }, { deep: true })
 
-// 搜索过滤
+// ============ ⭐ 收藏相关（本地存储，预留线上接口） ============
+const FAVORITES_STORAGE_KEY = 'game-favorites'
+
+// 收藏的游戏 id 列表（用数组保证响应式 + 可序列化）
+const favorites = ref<string[]>([])
+// 是否只看收藏
+const showOnlyFavorites = ref(false)
+
+/**
+ * 拉取收藏列表。
+ * 当前实现：从 localStorage 读取。
+ * 未来对接线上接口时，把这里改成 await api.getFavorites() 即可，调用方无需改动。
+ */
+async function fetchFavorites(): Promise<string[]> {
+    try {
+        const raw = localStorage.getItem(FAVORITES_STORAGE_KEY)
+        if (raw) return JSON.parse(raw)
+    } catch { /* ignore */ }
+    return []
+}
+
+/**
+ * 持久化收藏列表。
+ * 当前实现：写入 localStorage。
+ * 未来对接线上接口时，把这里改成 await api.saveFavorites(ids) 即可。
+ */
+async function persistFavorites(ids: string[]): Promise<void> {
+    try {
+        localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(ids))
+    } catch { /* ignore */ }
+}
+
+async function loadFavorites() {
+    favorites.value = await fetchFavorites()
+}
+
+function isFavorite(id: string): boolean {
+    return favorites.value.includes(id)
+}
+
+/**
+ * 切换收藏状态。
+ * 本地先更新，再持久化。未来可在此处调用线上 toggle 接口，
+ * 失败时回滚本地状态即可（目前不做回滚）。
+ */
+async function toggleFavorite(id: string) {
+    const idx = favorites.value.indexOf(id)
+    if (idx >= 0) {
+        favorites.value.splice(idx, 1)
+    } else {
+        favorites.value.push(id)
+    }
+    await persistFavorites([...favorites.value])
+}
+
+function toggleFavoriteFilter() {
+    showOnlyFavorites.value = !showOnlyFavorites.value
+}
+
+// 搜索 + 收藏过滤
 const filteredGames = computed(() => {
-    if (!keyword.value.trim()) return games.value
+    let list = games.value
+    // 收藏过滤
+    if (showOnlyFavorites.value) {
+        const favSet = new Set(favorites.value)
+        list = list.filter(g => favSet.has(g.id))
+    }
+    // 关键词搜索
     const kw = keyword.value.trim().toLowerCase()
-    return games.value.filter(g => g.name.toLowerCase().includes(kw))
+    if (kw) list = list.filter(g => g.name.toLowerCase().includes(kw))
+    return list
 })
 
 // 弹窗相关
@@ -378,6 +473,7 @@ async function loadAudioDevices() {
 
 onMounted(() => {
     loadGames()
+    loadFavorites()
     loadAudioDevices()
     // 监听设置页的输出设备切换，实时更新选中状态
     window.addEventListener('audio-output-device-change', onDeviceChange)
