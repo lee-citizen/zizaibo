@@ -49,6 +49,8 @@ export interface AppContract {
   getStaticPath(): string;
   /** 退出应用 */
   quit(): void;
+  /** 重启应用（热更新完成后调用） */
+  relaunch(): void;
   /** 检查整包更新（electron-updater） */
   checkUpdate(): void;
   /** 退出并安装整包更新 */

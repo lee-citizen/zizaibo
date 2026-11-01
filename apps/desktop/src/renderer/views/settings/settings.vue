@@ -9,13 +9,21 @@
       </p>
     </section>
 
-    <!-- ========== 游戏库更新 ========== -->
+    <!-- ========== 检查更新 ========== -->
     <section class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-      <h2 class="text-base font-semibold text-gray-800 mb-3">游戏库更新</h2>
-      <div class="flex items-center gap-4">
-        <el-button type="success" @click="onSyncGames">同步游戏库</el-button>
-        <p class="text-sm text-gray-400">已对接官方游戏库，启动自动同步，有新游戏必这里手动拉一次</p>
+      <h2 class="text-base font-semibold text-gray-800 mb-3">检查更新</h2>
+      <div class="flex items-center gap-4 flex-wrap">
+        <el-button type="primary" :loading="updateChecking" @click="onCheckUpdate">
+          <el-icon class="mr-1"><Download /></el-icon>
+          检查更新
+        </el-button>
+        <span class="text-sm" :class="updateError ? 'text-red-400' : 'text-gray-500'">
+          {{ updateStatusText }}
+        </span>
       </div>
+      <p class="text-xs text-gray-400 mt-2">
+        当前版本 v{{ appVersion }}，有新版本时会自动下载并提示重启。
+      </p>
     </section>
 
     <!-- ========== 语音输出 ========== -->
@@ -89,9 +97,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { Refresh, Download } from "@element-plus/icons-vue";
-import { ipc } from "@renderer/utils/ipcRenderer";
+import { ipc, ipcEvents, onIpcEvent } from "@renderer/utils/ipcRenderer";
 import { useSpeechStore } from "@renderer/store/modules/speech";
 import pkg from "../../../../package.json";
 
@@ -210,10 +218,62 @@ function onTestSound() {
   ElMessage.info("音效测试功能开发中");
 }
 
-// ---- 游戏库更新 ----
-function onSyncGames() {
-  ElMessage.info("游戏库同步功能开发中");
+// ---- 检查更新（增量热更新） ----
+const updateChecking = ref(false);
+const updateStatusText = ref("");
+const updateError = ref("");
+
+/** 热更新状态文案映射 */
+const HOT_STATUS_TEXT: Record<string, string> = {
+  init: "正在检查更新...",
+  downloading: "正在下载更新包...",
+  moving: "正在安装更新...",
+  finished: "更新完成",
+  failed: "更新失败",
+  "not-available": "当前已是最新版本",
+};
+
+async function onCheckUpdate() {
+  if (updateChecking.value) return;
+  updateChecking.value = true;
+  updateError.value = "";
+  updateStatusText.value = "正在检查更新...";
+  try {
+    await ipc.updater.start();
+  } catch (e) {
+    updateChecking.value = false;
+    updateError.value = "检查更新失败，请稍后重试";
+    updateStatusText.value = "";
+    ElMessage.error("检查更新失败");
+  }
 }
+
+// 监听增量热更新状态推送
+onIpcEvent(ipcEvents.update.hotStatus, (msg) => {
+  updateStatusText.value = HOT_STATUS_TEXT[msg.status] || msg.message || "";
+  if (msg.status === "finished") {
+    updateChecking.value = false;
+    updateError.value = "";
+    // 更新完成，询问是否立即重启
+    ElMessageBox.confirm("新版本已下载完成，是否立即重启应用？", "更新完成", {
+      confirmButtonText: "立即重启",
+      cancelButtonText: "稍后重启",
+      type: "success",
+    })
+      .then(() => {
+        void ipc.app.relaunch();
+      })
+      .catch(() => {
+        /* 用户选择稍后重启，下次启动时自动应用更新 */
+      });
+  } else if (msg.status === "failed") {
+    updateChecking.value = false;
+    updateError.value = msg.message || "更新失败";
+  } else if (msg.status === "not-available") {
+    updateChecking.value = false;
+    updateError.value = "";
+  }
+});
 
 onMounted(() => {
   void detectDevice();

@@ -84,6 +84,10 @@ export const updaterIpcHandlers: IpcImpl<UpdaterContract> = {
  */
 async function performUpdate(windows?: BrowserWindow): Promise<void> {
   try {
+    // 未配置更新地址时直接提示，避免发出无效请求
+    if (!hotPublishConfig.url) {
+      throw new Error('未配置热更新地址，请联系开发者')
+    }
     const res: Res = await request({
       url: `${hotPublishConfig.url}/${
         hotPublishConfig.configName
@@ -109,6 +113,12 @@ async function performUpdate(windows?: BrowserWindow): Promise<void> {
       await remove(join(`${appPath}`, 'package.json'))
       await copy(appPathTemp, appPath)
       updateInfo.status = 'finished'
+      if (windows)
+        webContentSend.update.hotStatus(windows.webContents, updateInfo)
+    } else {
+      // 当前已是最新版本
+      updateInfo.status = 'not-available'
+      updateInfo.message = '当前已是最新版本'
       if (windows)
         webContentSend.update.hotStatus(windows.webContents, updateInfo)
     }

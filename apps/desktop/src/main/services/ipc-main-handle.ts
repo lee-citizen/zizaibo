@@ -200,6 +200,10 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   quit: () => {
     app.quit();
   },
+  relaunch: () => {
+    app.relaunch();
+    app.exit(0);
+  },
   checkUpdate: (event) => {
     const windows = BrowserWindow.fromWebContents(event.sender);
     if (!windows) return;
