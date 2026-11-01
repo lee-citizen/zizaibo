@@ -42,6 +42,7 @@ interface PersistState {
 }
 
 const SETTINGS_KEY = "bg-music-settings";
+const FAVORITES_KEY = "bg-music-favorites";
 
 /** 内置曲目（构建期打包资源） */
 const BUILTIN_TRACKS: Track[] = [
@@ -112,6 +113,11 @@ export const useBgmStore = defineStore("bgm", () => {
   const loopMode = ref<LoopMode>("list");
   const currentId = ref<string>("");
 
+  // 收藏：本地持久化（track id 集合）
+  const favorites = ref<Set<string>>(new Set());
+  // 是否只展示收藏
+  const showOnlyFavorites = ref(false);
+
   // 仅内存保存，不落盘
   let userTracksMeta: UserMusicTrack[] = [];
   let hiddenBuiltins: string[] = [];
@@ -124,7 +130,35 @@ export const useBgmStore = defineStore("bgm", () => {
     return playlist.value[currentIndex.value];
   });
 
+  // 过滤后的播放列表（用于展示）
+  const filteredPlaylist = computed<Track[]>(() => {
+    if (!showOnlyFavorites.value) return playlist.value;
+    return playlist.value.filter((t) => favorites.value.has(t.id));
+  });
+
+  const favoriteCount = computed(() => favorites.value.size);
+
   // ---- helpers ----
+  function loadFavorites(): void {
+    try {
+      const raw = localStorage.getItem(FAVORITES_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        favorites.value = new Set(arr);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function saveFavorites(): void {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites.value]));
+    } catch {
+      /* ignore */
+    }
+  }
+
   function saveSettings(): void {
     const data: PersistState = {
       volume: volume.value,
@@ -220,6 +254,9 @@ export const useBgmStore = defineStore("bgm", () => {
     volume.value = settings.volume;
     muted.value = settings.muted;
     loopMode.value = settings.loopMode;
+
+    // 加载收藏
+    loadFavorites();
 
     audio = new Audio();
     // auto：设置 src 后积极缓冲，避免首次 play 因数据未就绪被拒绝而无声
@@ -451,6 +488,26 @@ export const useBgmStore = defineStore("bgm", () => {
     ElMessage.info({ message: "已清空播放列表", offset: 40 });
   }
 
+  // ---- 收藏 ----
+  function isFavorite(trackId: string): boolean {
+    return favorites.value.has(trackId);
+  }
+
+  function toggleFavorite(trackId: string): void {
+    const next = new Set(favorites.value);
+    if (next.has(trackId)) {
+      next.delete(trackId);
+    } else {
+      next.add(trackId);
+    }
+    favorites.value = next;
+    saveFavorites();
+  }
+
+  function toggleFavoriteFilter(): void {
+    showOnlyFavorites.value = !showOnlyFavorites.value;
+  }
+
   return {
     // state
     playlist,
@@ -460,6 +517,10 @@ export const useBgmStore = defineStore("bgm", () => {
     muted,
     loopMode,
     currentTrack,
+    favorites,
+    showOnlyFavorites,
+    filteredPlaylist,
+    favoriteCount,
     // actions
     init,
     playTrack,
@@ -474,5 +535,8 @@ export const useBgmStore = defineStore("bgm", () => {
     removeTrack,
     restoreBuiltin,
     clearAll,
+    isFavorite,
+    toggleFavorite,
+    toggleFavoriteFilter,
   };
 });

@@ -23,6 +23,9 @@
             全部删除
           </el-button>
           <el-button :icon="RefreshLeft" @click="bgm.restoreBuiltin">恢复内置</el-button>
+          <el-button :type="bgm.showOnlyFavorites ? 'warning' : 'default'" :icon="Star" @click="bgm.toggleFavoriteFilter">
+            {{ bgm.showOnlyFavorites ? `全部 (${bgm.playlist.length})` : `仅看收藏 (${bgm.favoriteCount})` }}
+          </el-button>
         </div>
       </div>
 
@@ -91,8 +94,8 @@
 
       <!-- 播放列表 -->
       <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div v-if="bgm.playlist.length" class="divide-y divide-gray-100">
-          <div v-for="(track, index) in bgm.playlist" :key="track.id"
+        <div v-if="bgm.filteredPlaylist.length" class="divide-y divide-gray-100">
+          <div v-for="(track, index) in bgm.filteredPlaylist" :key="track.id"
             class="flex items-center gap-3 px-4 py-3 transition-colors"
             :class="index === bgm.currentIndex ? 'bg-blue-50' : 'hover:bg-gray-50'">
             <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0" :class="index === bgm.currentIndex && bgm.isPlaying
@@ -105,6 +108,15 @@
               :class="index === bgm.currentIndex ? 'text-blue-600 font-medium' : 'text-gray-700'">
               {{ track.name }}
             </span>
+            <button
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-colors shrink-0"
+              :class="bgm.isFavorite(track.id) ? 'text-yellow-400' : 'text-gray-300 hover:text-gray-400'"
+              :title="bgm.isFavorite(track.id) ? '取消收藏' : '收藏'"
+              @click="bgm.toggleFavorite(track.id)">
+              <el-icon>
+                <component :is="bgm.isFavorite(track.id) ? StarFilled : Star" />
+              </el-icon>
+            </button>
             <el-button size="small" text type="primary" @click="bgm.playTrack(index)">
               {{ index === bgm.currentIndex && bgm.isPlaying ? "暂停" : "播放" }}
             </el-button>
@@ -141,6 +153,8 @@ import {
   CaretRight,
   Mute,
   Headset,
+  Star,
+  StarFilled,
 } from "@element-plus/icons-vue";
 
 const bgm = useBgmStore();
