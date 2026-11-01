@@ -1,13 +1,25 @@
 import axios from 'axios'
+
 const serves = axios.create({
   baseURL: __CONFIG__.BASE_API,
-  timeout: 5000,
+  timeout: 15000,
 })
+
+/** 模块级 token，由 auth store 在加载/激活/登出时同步 */
+let authToken = ''
+
+/** 供 auth store 设置当前 token */
+export function setAuthToken(token: string) {
+  authToken = token
+}
 
 // 设置请求发送之前的拦截器
 serves.interceptors.request.use(
   (config) => {
-    // 设置发送之前数据需要做什么处理
+    if (authToken) {
+      config.headers = config.headers || {}
+      config.headers.Authorization = `Bearer ${authToken}`
+    }
     return config
   },
   (err) => Promise.reject(err),
@@ -16,23 +28,17 @@ serves.interceptors.request.use(
 // 设置请求接受拦截器
 serves.interceptors.response.use(
   (res) => {
-    // 设置接受数据之后，做什么处理
-    if (res.data.code === 50000) {
-      // ElMessage.error(res.data.data);
-    }
     return res
   },
   (err) => {
-    // 判断请求异常信息中是否含有超时timeout字符串
-    if (err.message.includes('timeout')) {
-      console.log('错误回调', err)
+    if (err.message?.includes('timeout')) {
+      console.log('请求超时', err)
     }
-    if (err.message.includes('Network Error')) {
-      console.log('错误回调', err)
+    if (err.message?.includes('Network Error')) {
+      console.log('网络错误', err)
     }
     return Promise.reject(err)
   },
 )
 
-// 将serves抛出去
 export default serves

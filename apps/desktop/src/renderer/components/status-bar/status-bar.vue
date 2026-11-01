@@ -27,7 +27,8 @@
       <!-- 会员状态 -->
       <div class="flex items-center gap-1.5">
         <svg
-          class="w-3.5 h-3.5 text-amber-400"
+          class="w-3.5 h-3.5"
+          :class="auth.authorized ? 'text-amber-400' : 'text-slate-500'"
           fill="currentColor"
           viewBox="0 0 20 20"
         >
@@ -35,7 +36,9 @@
             d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
           />
         </svg>
-        <span>会员有效 · 2026-10-28 01:50:59</span>
+        <span :class="auth.authorized ? 'text-amber-400' : 'text-slate-500'">{{
+          membershipText
+        }}</span>
       </div>
     </div>
 
@@ -55,11 +58,26 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useConnectStore } from '@renderer/store/modules/connect'
+import { useAuthStore } from '@renderer/store/modules/auth'
 import { ipc } from '@renderer/utils/ipcRenderer'
 import { ElMessage } from 'element-plus'
 
 const connect = useConnectStore()
+const auth = useAuthStore()
+
+/** 会员状态文案 */
+const membershipText = computed(() => {
+  if (!auth.authorized) return '未激活'
+  if (auth.licenseType === 'permanent') return '永久会员'
+  if (auth.expiresAt) {
+    const d = new Date(auth.expiresAt * 1000)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `时长会员 · 至 ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  return '时长会员'
+})
 
 /** 切换直播间窗口的显示/隐藏（隐藏后弹幕采集不中断） */
 async function toggleRoomVisibility(): Promise<void> {

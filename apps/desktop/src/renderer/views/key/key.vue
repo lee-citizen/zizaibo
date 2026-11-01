@@ -39,7 +39,7 @@
             <!-- 状态条 -->
             <div class="status-bar" :class="activated ? 'on' : 'off'">
                 <span class="status-dot" />
-                <span>{{ activated ? `已激活 · ${planName} · 至 ${expireDate}` : '未激活 · 功能受限' }}</span>
+                <span>{{ activated ? `已激活 · ${planName}${isPermanent ? '' : ` · 至 ${expireDate}`}` : '未激活 · 功能受限' }}</span>
             </div>
 
             <h2 class="panel-title mt-6">卡密激活</h2>
@@ -91,7 +91,7 @@
                 </el-icon>
                 <div class="active-info">
                     <div class="active-title">本机已激活，全部功能可用</div>
-                    <div class="active-sub">套餐：{{ planName }} · 有效期至 {{ expireDate }}</div>
+                    <div class="active-sub">套餐：{{ planName }}<template v-if="!isPermanent"> · 有效期至 {{ expireDate }}</template></div>
                     <div class="active-tip">卡密与机器码绑定，请勿外泄</div>
                 </div>
                 <el-button plain size="large" class="logout-btn" @click="logout">退出登录</el-button>
@@ -105,20 +105,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { CopyDocument, Key, CircleCheckFilled, Warning, Film, ChatDotRound, Clock, Headset } from '@element-plus/icons-vue'
 import { ipc } from '@renderer/utils/ipcRenderer'
 import { copyToClipboard } from '@renderer/utils/clipboard'
+import { useAuthStore } from '@renderer/store/modules/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
 
 const machineId = ref('')
 const cardKey = ref('')
 const rememberKey = ref(true)
 const autoLogin = ref(false)
-const activated = ref(false)
 const activating = ref(false)
+
+const activated = ref(false)
 const planName = ref('付费')
 const expireDate = ref('')
+const isPermanent = ref(true)
+
+// 监听授权状态变化，自动同步到本地显示
+watch(
+  () => [auth.authorized, auth.licenseType, auth.expiresAt],
+  () => {
+    activated.value = auth.authorized
+    if (auth.authorized) {
+      isPermanent.value = auth.licenseType === 'permanent'
+      planName.value = isPermanent.value ? '永久会员' : '时长会员'
+      expireDate.value =
+        !isPermanent.value && auth.expiresAt
+          ? formatDate(new Date(auth.expiresAt * 1000))
+          : ''
+    }
+  },
+  { immediate: true },
+)
+
+// 自动登录勾选时强制记住卡密
+watch(autoLogin, (val) => {
+  if (val) rememberKey.value = true
+})
 
 const features = [
     {
@@ -147,15 +176,6 @@ const features = [
     },
 ]
 
-const fetchMachineId = async () => {
-    try {
-        const id = await ipc.app.getMachineId()
-        machineId.value = (id || '').slice(0, 32)
-    } catch {
-        machineId.value = '获取失败'
-    }
-}
-
 const copyMachineId = async () => {
     if (!machineId.value) return
     try {
@@ -171,18 +191,30 @@ const activate = async () => {
         ElMessage.warning('请输入卡密')
         return
     }
+    // 选择自动登录时必须记住卡密
+    if (autoLogin.value) rememberKey.value = true
+
     activating.value = true
-    await new Promise((r) => setTimeout(r, 800))
-    activated.value = true
-    planName.value = '付费'
-    expireDate.value = formatDate(new Date(Date.now() + 30 * 24 * 3600 * 1000))
+    // 同步设置到 store
+    auth.rememberKey = rememberKey.value
+    auth.autoLogin = autoLogin.value
+
+    const result = await auth.activate(cardKey.value)
     activating.value = false
-    ElMessage.success('激活成功')
+
+    if (result.ok) {
+        ElMessage.success(result.message)
+        // 激活成功后跳转到首页
+        setTimeout(() => router.push('/'), 500)
+    } else {
+        ElMessage.error(result.message)
+    }
 }
 
-const logout = () => {
-    activated.value = false
-    cardKey.value = ''
+const logout = async () => {
+    await auth.logout(false)
+    // 退出登录后，如果勾选了记住卡密，回填记住的卡密；否则清空
+    cardKey.value = auth.rememberKey ? auth.rememberedCardKey : ''
     ElMessage.info('已退出登录')
 }
 
@@ -191,9 +223,24 @@ const formatDate = (d: Date) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-onMounted(() => {
-    fetchMachineId()
+onMounted(async () => {
+    // 先确保本地存储已加载（与 App.vue 的 bootstrapAuth 可能存在竞态）
+    await auth.loadSaved()
+    await auth.ensureDeviceId()
+    machineId.value = (auth.deviceId || '').slice(0, 32)
+    // 回填记住的卡密和设置
+    cardKey.value = auth.rememberedCardKey
+    rememberKey.value = auth.rememberKey
+    autoLogin.value = auth.autoLogin
 })
+
+// 兜底：若 loadSaved 在挂载后才完成，同步回填
+watch(
+    () => auth.rememberedCardKey,
+    (val) => {
+        if (val && !cardKey.value) cardKey.value = val
+    },
+)
 </script>
 
 <style lang="scss" scoped>

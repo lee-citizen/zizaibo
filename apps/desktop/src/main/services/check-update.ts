@@ -8,7 +8,7 @@ class Update {
   public mainWindow!: BrowserWindow
   constructor() {
     // 设置url
-    autoUpdater.setFeedURL('http://127.0.0.1:25565/')
+    autoUpdater.setFeedURL('http://59.110.51.224/')
     // 当更新发生错误的时候触发。
     autoUpdater.on('error', (err) => {
       console.log('更新出现错误', err.message)

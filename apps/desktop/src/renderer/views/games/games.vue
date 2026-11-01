@@ -195,13 +195,19 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Top, Star, StarFilled } from '@element-plus/icons-vue'
-import gamesData from '../../public/games.json'
+import request from '@renderer/utils/request'
+import { useAuthStore } from '@renderer/store/modules/auth'
+import { ipc } from '@renderer/utils/ipcRenderer'
+
+const auth = useAuthStore()
+const router = useRouter()
 
 interface Game {
     id: string
     name: string
-    url: string
     cover?: string
     tips?: string
     tips_images?: string[]
@@ -358,7 +364,7 @@ const currentGame = ref<Game | null>(null)
 
 const tipsImageList = computed(() => {
     if (!currentGame.value?.tips_images?.length) return []
-    return currentGame.value.tips_images.map((p: string) => '/' + p)
+    return currentGame.value.tips_images
 })
 
 function showTips(game: Game) {
@@ -368,13 +374,26 @@ function showTips(game: Game) {
 
 function openGame(game: Game) {
     const sinkDeviceId = localStorage.getItem('audio-output-device-id') || ''
-    window.ipcBridge.invoke('app:openGameWindow', {
-        url: game.url,
-        title: game.name,
-        mute: settings.value.mute,
-        volume: settings.value.volume / 100,
-        sinkDeviceId: sinkDeviceId !== 'default' ? sinkDeviceId : '',
-    })
+    // 先走跳转接口拿真实游戏地址
+    ipc.app.gameJump({ token: auth.token, gameKey: game.id })
+        .then((url: string) => {
+            window.ipcBridge.invoke('app:openGameWindow', {
+                url,
+                title: game.name,
+                mute: settings.value.mute,
+                volume: settings.value.volume / 100,
+                sinkDeviceId: sinkDeviceId !== 'default' ? sinkDeviceId : '',
+            })
+        })
+        .catch((e: Error) => {
+            if (e.message === 'UNAUTHORIZED') {
+                // 未授权：提示并跳转到激活页
+                ElMessage.warning('请先激活卡密')
+                router.push('/key')
+            } else {
+                ElMessage.error(e.message || '启动游戏失败')
+            }
+        })
 }
 
 function startGameFromDialog() {
@@ -383,20 +402,35 @@ function startGameFromDialog() {
     tipsVisible.value = false
 }
 
-function loadGames() {
+const gamesLoading = ref(false)
 
-    // games.value = gamesData as Game[]
-    let gameList = gamesData.map((game: any) => {
-        return {
-            id: game.id,
-            name: game.name,
-            url: game.url,
-            cover: '/cover-imgs/' + game.id + '.png',
-            tips: game.tips,
-            tips_images: game.tips_images,
+async function loadGames() {
+    gamesLoading.value = true
+    try {
+        const res = await request.get('/api/v1/games')
+        const data = res.data as { code: string; data?: { items: any[] } }
+        if (data.code === 'OK' && data.data?.items) {
+            games.value = data.data.items.map((g: any) => ({
+                id: g.id,
+                name: g.name,
+                cover: g.cover,
+                tips: g.tips,
+                tips_images: Array.isArray(g.tips_images) ? g.tips_images : [],
+            })) as Game[]
+        } else {
+            games.value = []
         }
-    })
-    games.value = gameList as Game[]
+    } catch (e: any) {
+        if (e?.response?.status === 401) {
+            ElMessage.warning('请先激活卡密')
+            router.push('/key')
+        } else {
+            ElMessage.error('加载游戏列表失败')
+        }
+        games.value = []
+    } finally {
+        gamesLoading.value = false
+    }
 }
 
 // ============ 🔊 播放设备相关 ============

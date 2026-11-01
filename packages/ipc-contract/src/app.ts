@@ -78,6 +78,11 @@ export interface AppContract {
   deleteStoreValue(args: StoreKeyArgs): void;
   /** 打开游戏窗口（手机尺寸 BrowserWindow） */
   openGameWindow(args: OpenGameWindowArgs): void;
+  /**
+   * 游戏跳转：调用后台 /api/v1/game/jump 接口，返回游戏真实 URL
+   * 401 时抛出 'UNAUTHORIZED' 错误
+   */
+  gameJump(args: { token: string; gameKey: string }): string;
   /** 获取当前系统默认音频输出设备名 */
   getDefaultAudioDevice(): string | null;
   /** 打开系统音量合成器/声音设置 */
@@ -86,6 +91,17 @@ export interface AppContract {
   detectVirtualAudioDevice(): string | null;
   /** 用系统默认浏览器打开外部链接（兼容 mac/win） */
   openExternalUrl(url: string): void;
+  /**
+   * 下载整包更新安装包，校验 SHA-256 后打开安装程序并退出当前应用
+   * @param downloadUrl 安装包下载地址
+   * @param sha256 期望的 SHA-256（空字符串跳过校验）
+   * @param fileName 保存文件名
+   */
+  downloadAndInstallUpdate(args: {
+    downloadUrl: string;
+    sha256: string;
+    fileName: string;
+  }): void;
   /** 获取本机机器码（基于 app.getMachineId 的硬件指纹） */
   getMachineId(): string;
 

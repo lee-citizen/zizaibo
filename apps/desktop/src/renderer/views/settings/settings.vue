@@ -99,8 +99,9 @@
 import { ref, onMounted, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Refresh, Download } from "@element-plus/icons-vue";
-import { ipc, ipcEvents, onIpcEvent } from "@renderer/utils/ipcRenderer";
+import { ipc } from "@renderer/utils/ipcRenderer";
 import { useSpeechStore } from "@renderer/store/modules/speech";
+import request from "@renderer/utils/request";
 import pkg from "../../../../package.json";
 
 const speech = useSpeechStore();
@@ -218,20 +219,31 @@ function onTestSound() {
   ElMessage.info("音效测试功能开发中");
 }
 
-// ---- 检查更新（增量热更新） ----
+// ---- 检查更新（对接后台整包更新接口） ----
 const updateChecking = ref(false);
 const updateStatusText = ref("");
 const updateError = ref("");
 
-/** 热更新状态文案映射 */
-const HOT_STATUS_TEXT: Record<string, string> = {
-  init: "正在检查更新...",
-  downloading: "正在下载更新包...",
-  moving: "正在安装更新...",
-  finished: "更新完成",
-  failed: "更新失败",
-  "not-available": "当前已是最新版本",
-};
+/** 获取当前平台标识（windows / mac / linux） */
+function getPlatform(): string {
+  const p = (window as any).ipcBridge?.processInfo?.platform;
+  if (p === 'darwin') return 'mac';
+  if (p === 'linux') return 'linux';
+  return 'windows';
+}
+
+/** 比较版本号：v1 > v2 返回正数 */
+function compareVersion(v1: string, v2: string): number {
+  const a = v1.replace(/^v/, '').split('.').map(Number);
+  const b = v2.replace(/^v/, '').split('.').map(Number);
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const x = a[i] || 0;
+    const y = b[i] || 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
 
 async function onCheckUpdate() {
   if (updateChecking.value) return;
@@ -239,41 +251,84 @@ async function onCheckUpdate() {
   updateError.value = "";
   updateStatusText.value = "正在检查更新...";
   try {
-    await ipc.updater.start();
-  } catch (e) {
+    const res = await request.get('/api/v1/app/update', {
+      params: { platform: getPlatform() },
+    });
+    const data = res.data as {
+      code: string;
+      data: {
+        version: string;
+        download_url: string;
+        sha256: string;
+        release_notes: string;
+        force_update: number;
+      } | null;
+    };
+
+    if (data.code !== 'OK') {
+      throw new Error('更新接口返回异常');
+    }
+
+    const latest = data.data;
+    if (!latest) {
+      updateStatusText.value = "当前已是最新版本";
+      updateChecking.value = false;
+      return;
+    }
+
+    // 比较版本号
+    if (compareVersion(latest.version, appVersion) <= 0) {
+      updateStatusText.value = "当前已是最新版本";
+      updateChecking.value = false;
+      return;
+    }
+
+    // 有新版本
+    updateStatusText.value = `发现新版本 v${latest.version}`;
     updateChecking.value = false;
-    updateError.value = "检查更新失败，请稍后重试";
+
+    const forceUpdate = latest.force_update === 1;
+    const msg = forceUpdate
+      ? `检测到强制更新 v${latest.version}，必须更新后才能继续使用。\n\n${latest.release_notes || ''}`
+      : `发现新版本 v${latest.version}（当前 v${appVersion}）\n\n${latest.release_notes || ''}\n\n是否立即下载更新？`;
+
+    await ElMessageBox.confirm(msg, forceUpdate ? '强制更新' : '发现新版本', {
+      confirmButtonText: '立即更新',
+      cancelButtonText: forceUpdate ? '退出应用' : '稍后',
+      closeOnClickModal: !forceUpdate,
+      closeOnPressEscape: !forceUpdate,
+      showClose: !forceUpdate,
+      type: forceUpdate ? 'warning' : 'info',
+    })
+      .then(async () => {
+        updateChecking.value = true;
+        updateStatusText.value = "正在下载更新包...";
+        const fileName = latest.download_url.split('/').pop() || `update-${latest.version}.exe`;
+        try {
+          await ipc.app.downloadAndInstallUpdate({
+            downloadUrl: latest.download_url,
+            sha256: latest.sha256,
+            fileName,
+          });
+        } catch (e: any) {
+          updateChecking.value = false;
+          updateError.value = e?.message || '下载更新失败';
+          ElMessage.error(updateError.value);
+        }
+      })
+      .catch(() => {
+        if (forceUpdate) {
+          // 强制更新：用户取消则退出应用
+          void ipc.app.quit();
+        }
+      });
+  } catch (e: any) {
+    updateChecking.value = false;
+    updateError.value = e?.message || '检查更新失败，请稍后重试';
     updateStatusText.value = "";
     ElMessage.error("检查更新失败");
   }
 }
-
-// 监听增量热更新状态推送
-onIpcEvent(ipcEvents.update.hotStatus, (msg) => {
-  updateStatusText.value = HOT_STATUS_TEXT[msg.status] || msg.message || "";
-  if (msg.status === "finished") {
-    updateChecking.value = false;
-    updateError.value = "";
-    // 更新完成，询问是否立即重启
-    ElMessageBox.confirm("新版本已下载完成，是否立即重启应用？", "更新完成", {
-      confirmButtonText: "立即重启",
-      cancelButtonText: "稍后重启",
-      type: "success",
-    })
-      .then(() => {
-        void ipc.app.relaunch();
-      })
-      .catch(() => {
-        /* 用户选择稍后重启，下次启动时自动应用更新 */
-      });
-  } else if (msg.status === "failed") {
-    updateChecking.value = false;
-    updateError.value = msg.message || "更新失败";
-  } else if (msg.status === "not-available") {
-    updateChecking.value = false;
-    updateError.value = "";
-  }
-});
 
 onMounted(() => {
   void detectDevice();

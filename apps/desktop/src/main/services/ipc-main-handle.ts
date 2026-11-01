@@ -8,6 +8,8 @@ import { webContentSend } from "./web-content-send";
 import { IsUseSysTitle } from "@main/config/const";
 import { otherWindowConfig } from "@main/config/windows-config";
 import { openGameWindow } from "./game-window";
+import { gameJump } from "./game-jump";
+import { downloadAndInstallUpdate } from "./update-downloader";
 import { getDefaultOutputDeviceName, openSystemMixer, detectVirtualAudioDevice } from "./audio-devices";
 import { getMachineId } from "./machine-id";
 import {
@@ -51,6 +53,9 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
       sinkDeviceId: args.sinkDeviceId,
     });
   },
+  gameJump: async (_event, args) => {
+    return gameJump(args.token, args.gameKey);
+  },
   getDefaultAudioDevice: () => {
     return getDefaultOutputDeviceName();
   },
@@ -62,6 +67,9 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   openExternalUrl: (_event, url: string) => {
     shell.openExternal(url);
+  },
+  downloadAndInstallUpdate: async (_event, args) => {
+    await downloadAndInstallUpdate(args.downloadUrl, args.sha256, args.fileName);
   },
   getMachineId: () => {
     return getMachineId();
