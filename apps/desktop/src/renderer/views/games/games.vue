@@ -198,7 +198,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElLoading } from 'element-plus'
 import { Top, Star, StarFilled } from '@element-plus/icons-vue'
 import request from '@renderer/utils/request'
 import { useAuthStore } from '@renderer/store/modules/auth'
@@ -374,12 +374,25 @@ function showTips(game: Game) {
     tipsVisible.value = true
 }
 
+// 游戏启动 loading（防止重复点击）
+const gameStarting = ref(false)
+
 function openGame(game: Game) {
+    if (gameStarting.value) return
+    gameStarting.value = true
     const sinkDeviceId = localStorage.getItem('audio-output-device-id') || ''
+
+    const loading = ElLoading.service({
+        lock: true,
+        text: `正在启动「${game.name}」...`,
+        background: 'rgba(0, 0, 0, 0.7)',
+    })
+
     // 先走跳转接口拿真实游戏地址
     ipc.app.gameJump({ token: auth.token, gameKey: game.id })
         .then((url: string) => {
-            window.ipcBridge.invoke('app:openGameWindow', {
+            loading.setText('正在加载游戏画面...')
+            return window.ipcBridge.invoke('app:openGameWindow', {
                 url,
                 title: game.name,
                 mute: settings.value.mute,
@@ -387,14 +400,21 @@ function openGame(game: Game) {
                 sinkDeviceId: sinkDeviceId !== 'default' ? sinkDeviceId : '',
             })
         })
+        .then(() => {
+            // 窗口打开后稍等一下再关闭 loading，让游戏画面开始渲染
+            setTimeout(() => loading.close(), 1500)
+        })
         .catch((e: Error) => {
+            loading.close()
             if (e.message === 'UNAUTHORIZED') {
-                // 未授权：提示并跳转到激活页
                 ElMessage.warning('请先激活卡密')
                 router.push('/key')
             } else {
                 ElMessage.error(e.message || '启动游戏失败')
             }
+        })
+        .finally(() => {
+            gameStarting.value = false
         })
 }
 

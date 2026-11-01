@@ -18,9 +18,11 @@ import { BASE_API } from '../config/api'
 export function gameJump(token: string, gameKey: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ game_key: gameKey })
+    const url = `${BASE_API}/api/v1/game/jump`
+    console.log('[game-jump] 请求:', url, 'gameKey:', gameKey)
     const request = net.request({
       method: 'POST',
-      url: `${BASE_API}/api/v1/game/jump`,
+      url,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -33,6 +35,7 @@ export function gameJump(token: string, gameKey: string): Promise<string> {
     // 监听重定向：直接拿到跳转地址，不跟随
     request.on('redirect', (_statusCode, _method, redirectUrl) => {
       if (settled) return
+      console.log('[game-jump] 收到重定向:', redirectUrl)
       if (redirectUrl) {
         settled = true
         resolve(redirectUrl)
@@ -40,12 +43,14 @@ export function gameJump(token: string, gameKey: string): Promise<string> {
     })
 
     request.on('response', (response) => {
+      console.log('[game-jump] 响应状态:', response.statusCode)
       if (settled) return
 
       // 尝试从 location 响应头获取（极少数情况 302 未触发 redirect 事件）
       const location = response.headers['location']
       const locationStr = Array.isArray(location) ? location[0] : location
       if (locationStr) {
+        console.log('[game-jump] 从 location 头获取:', locationStr)
         settled = true
         resolve(locationStr)
         return
@@ -69,6 +74,7 @@ export function gameJump(token: string, gameKey: string): Promise<string> {
       })
       response.on('end', () => {
         if (settled) return
+        console.log('[game-jump] 响应体:', data)
         try {
           const json = JSON.parse(data)
           const url = json?.data?.url || json?.url
@@ -85,6 +91,7 @@ export function gameJump(token: string, gameKey: string): Promise<string> {
     })
 
     request.on('error', (err) => {
+      console.error('[game-jump] 请求错误:', err.message)
       if (settled) return
       reject(new Error(`网络请求失败: ${err.message}`))
     })

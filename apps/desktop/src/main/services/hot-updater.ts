@@ -1,5 +1,7 @@
 /**
- * power by biuuu
+ * 增量热更新服务
+ * 对接后台接口 GET /api/v1/app/hot-update?platform=xxx
+ * 返回 { code, data: { version, name, hash, download_url } } 或 data: null
  */
 
 import { emptyDir, createWriteStream, readFile, copy, remove } from 'fs-extra'
@@ -8,10 +10,10 @@ import { promisify } from 'util'
 import { pipeline } from 'stream'
 import { app, BrowserWindow } from 'electron'
 import { gt } from 'semver'
-import { createHmac } from 'crypto'
+import { createHash } from 'crypto'
 import AdmZip from 'adm-zip'
 import { version } from '../../../package.json'
-import { hotPublishConfig } from '../config/hot-publish'
+import { BASE_API } from '../config/api'
 import axios, { AxiosResponse } from 'axios'
 import { webContentSend } from './web-content-send'
 import type { IpcImpl, UpdaterContract } from 'ipc-contract'
@@ -22,36 +24,29 @@ const updatePath = resolve(appPath, '..', '..', 'update')
 const request = axios.create()
 
 /**
- * @param data 文件流
- * @param type 类型，默认sha256
- * @param key 密钥，用于匹配计算结果
- * @returns {string} 计算结果
- * @author umbrella22
- * @date 2021-03-05
+ * 计算文件内容的 SHA-256（小写十六进制）
+ * 注意：后台接口返回的 hash 是普通 SHA-256，不是 HMAC
  */
-function hash(data: Buffer, type = 'sha256', key = 'Sky'): string {
-  const hmac = createHmac(type, key)
-  hmac.update(data)
-  return hmac.digest('hex')
+function sha256(data: Buffer): string {
+  return createHash('sha256').update(data).digest('hex')
 }
 
-/**
- * @param url 下载地址
- * @param filePath 文件存放地址
- * @returns {void}
- * @author umbrella22
- * @date 2021-03-05
- */
-async function download(url: string, filePath: string): Promise<void> {
-  const res = await request({ url, responseType: 'stream' })
-  await streamPipeline(res.data, createWriteStream(filePath))
+/** 根据当前操作系统返回平台标识 */
+function getPlatform(): string {
+  return process.platform === 'darwin' ? 'mac' : 'windows'
 }
 
-interface Res extends AxiosResponse<any> {
+interface HotUpdateData {
+  version: string
+  name: string
+  hash: string
+  download_url: string
+}
+
+interface HotUpdateResponse extends AxiosResponse<any> {
   data: {
-    version: string
-    name: string
-    hash: string
+    code: string
+    data: HotUpdateData | null
   }
 }
 
@@ -69,64 +64,92 @@ export const updaterIpcHandlers: IpcImpl<UpdaterContract> = {
     }
   },
 
-  // TODO: 实现热更新测试功能
   test: async () => {
     console.log('updater:test - Not implemented yet')
   },
 }
 
 /**
- * 执行更新流程
- * @param windows 指主窗口
- * @returns {void}
- * @author umbrella22
- * @date 2021-03-05
+ * 下载文件
+ */
+async function download(url: string, filePath: string): Promise<void> {
+  const res = await request({ url, responseType: 'stream' })
+  await streamPipeline(res.data, createWriteStream(filePath))
+}
+
+/**
+ * 执行增量热更新流程
  */
 async function performUpdate(windows?: BrowserWindow): Promise<void> {
   try {
-    // 未配置更新地址时直接提示，避免发出无效请求
-    if (!hotPublishConfig.url) {
-      throw new Error('未配置热更新地址，请联系开发者')
-    }
-    const res: Res = await request({
-      url: `${hotPublishConfig.url}/${
-        hotPublishConfig.configName
-      }.json?time=${new Date().getTime()}`,
+    const platform = getPlatform()
+    const url = `${BASE_API}/api/v1/app/hot-update`
+    console.log('[hot-updater] 检查更新:', url, 'platform:', platform, '当前版本:', version)
+    const res: HotUpdateResponse = await request({
+      url,
+      params: { platform },
     })
-    if (gt(res.data.version, version)) {
-      await emptyDir(updatePath)
-      const filePath = join(updatePath, res.data.name)
-      updateInfo.status = 'downloading'
-      if (windows)
-        webContentSend.update.hotStatus(windows.webContents, updateInfo)
-      await download(`${hotPublishConfig.url}/${res.data.name}`, filePath)
-      const buffer = await readFile(filePath)
-      const sha256 = hash(buffer)
-      if (sha256 !== res.data.hash) throw new Error('sha256 error')
-      const appPathTemp = join(updatePath, 'temp')
-      const zip = new AdmZip(filePath)
-      zip.extractAllTo(appPathTemp, true, true)
-      updateInfo.status = 'moving'
-      if (windows)
-        webContentSend.update.hotStatus(windows.webContents, updateInfo)
-      await remove(join(`${appPath}`, 'dist'))
-      await remove(join(`${appPath}`, 'package.json'))
-      await copy(appPathTemp, appPath)
-      updateInfo.status = 'finished'
-      if (windows)
-        webContentSend.update.hotStatus(windows.webContents, updateInfo)
-    } else {
-      // 当前已是最新版本
+    console.log('[hot-updater] 接口返回:', JSON.stringify(res.data))
+
+    const data = res.data?.data
+    // 没有可用热更新
+    if (!data) {
+      console.log('[hot-updater] 无可用更新')
       updateInfo.status = 'not-available'
       updateInfo.message = '当前已是最新版本'
-      if (windows)
-        webContentSend.update.hotStatus(windows.webContents, updateInfo)
+      if (windows) webContentSend.update.hotStatus(windows.webContents, updateInfo)
+      return
     }
-  } catch (error) {
-    updateInfo.status = 'failed'
-    updateInfo.message = String(error)
 
-    if (windows)
-      webContentSend.update.hotStatus(windows.webContents, updateInfo)
+    // 版本比较
+    if (!gt(data.version, version)) {
+      console.log('[hot-updater] 当前已是最新版本', data.version, '<=', version)
+      updateInfo.status = 'not-available'
+      updateInfo.message = '当前已是最新版本'
+      if (windows) webContentSend.update.hotStatus(windows.webContents, updateInfo)
+      return
+    }
+
+    console.log('[hot-updater] 发现新版本:', data.version, '下载地址:', data.download_url)
+
+    // 有新版本，开始更新
+    await emptyDir(updatePath)
+    const filePath = join(updatePath, data.name)
+
+    updateInfo.status = 'downloading'
+    updateInfo.message = '正在下载更新包...'
+    if (windows) webContentSend.update.hotStatus(windows.webContents, updateInfo)
+
+    await download(data.download_url, filePath)
+
+    // 校验 SHA-256
+    const buffer = await readFile(filePath)
+    const fileHash = sha256(buffer)
+    if (fileHash !== data.hash) {
+      throw new Error('文件校验失败，SHA-256 不匹配')
+    }
+
+    // 解压
+    updateInfo.status = 'moving'
+    updateInfo.message = '正在安装更新...'
+    if (windows) webContentSend.update.hotStatus(windows.webContents, updateInfo)
+
+    const appPathTemp = join(updatePath, 'temp')
+    const zip = new AdmZip(filePath)
+    zip.extractAllTo(appPathTemp, true, true)
+
+    // 替换文件
+    await remove(join(`${appPath}`, 'dist'))
+    await remove(join(`${appPath}`, 'package.json'))
+    await copy(appPathTemp, appPath)
+
+    updateInfo.status = 'finished'
+    updateInfo.message = '更新完成'
+    if (windows) webContentSend.update.hotStatus(windows.webContents, updateInfo)
+  } catch (error) {
+    console.error('[hot-updater] 更新失败:', error)
+    updateInfo.status = 'failed'
+    updateInfo.message = error instanceof Error ? error.message : String(error)
+    if (windows) webContentSend.update.hotStatus(windows.webContents, updateInfo)
   }
 }
