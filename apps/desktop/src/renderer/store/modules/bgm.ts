@@ -8,6 +8,22 @@ import music1 from "@renderer/assets/bg_music/music_1.mp3";
 import music2 from "@renderer/assets/bg_music/music_2.mp3";
 import music3 from "@renderer/assets/bg_music/music_3.mp3";
 import music4 from "@renderer/assets/bg_music/music_4.mp3";
+import music5 from "@renderer/assets/bg_music/music_5.mp3";
+import music6 from "@renderer/assets/bg_music/music_6.mp3";
+import music7 from "@renderer/assets/bg_music/music_7.mp3";
+import music8 from "@renderer/assets/bg_music/music_8.mp3";
+import music9 from "@renderer/assets/bg_music/music_9.mp3";
+import music10 from "@renderer/assets/bg_music/music_10.mp3";
+import music11 from "@renderer/assets/bg_music/music_11.mp3";
+import music12 from "@renderer/assets/bg_music/music_12.mp3";
+import music13 from "@renderer/assets/bg_music/music_13.mp3";
+import music14 from "@renderer/assets/bg_music/music_14.mp3";
+import music15 from "@renderer/assets/bg_music/music_15.mp3";
+import music16 from "@renderer/assets/bg_music/music_16.mp3";
+import music17 from "@renderer/assets/bg_music/music_17.mp3";
+import music18 from "@renderer/assets/bg_music/music_18.mp3";
+import music19 from "@renderer/assets/bg_music/music_19.mp3";
+import music20 from "@renderer/assets/bg_music/music_20.mp3";
 
 interface Track {
   id: string;
@@ -33,6 +49,22 @@ const BUILTIN_TRACKS: Track[] = [
   { id: "builtin-2", name: "music_2.mp3", url: music2, builtin: true },
   { id: "builtin-3", name: "music_3.mp3", url: music3, builtin: true },
   { id: "builtin-4", name: "music_4.mp3", url: music4, builtin: true },
+  { id: "builtin-5", name: "music_5.mp3", url: music5, builtin: true },
+  { id: "builtin-6", name: "music_6.mp3", url: music6, builtin: true },
+  { id: "builtin-7", name: "music_7.mp3", url: music7, builtin: true },
+  { id: "builtin-8", name: "music_8.mp3", url: music8, builtin: true },
+  { id: "builtin-9", name: "music_9.mp3", url: music9, builtin: true },
+  { id: "builtin-10", name: "music_10.mp3", url: music10, builtin: true },
+  { id: "builtin-11", name: "music_11.mp3", url: music11, builtin: true },
+  { id: "builtin-12", name: "music_12.mp3", url: music12, builtin: true },
+  { id: "builtin-13", name: "music_13.mp3", url: music13, builtin: true },
+  { id: "builtin-14", name: "music_14.mp3", url: music14, builtin: true },
+  { id: "builtin-15", name: "music_15.mp3", url: music15, builtin: true },
+  { id: "builtin-16", name: "music_16.mp3", url: music16, builtin: true },
+  { id: "builtin-17", name: "music_17.mp3", url: music17, builtin: true },
+  { id: "builtin-18", name: "music_18.mp3", url: music18, builtin: true },
+  { id: "builtin-19", name: "music_19.mp3", url: music19, builtin: true },
+  { id: "builtin-20", name: "music_20.mp3", url: music20, builtin: true },
 ];
 
 // 模块级 Audio 单例：整个应用生命周期唯一，路由切换不销毁
