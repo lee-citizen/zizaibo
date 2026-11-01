@@ -80,7 +80,7 @@
                     <!-- 封面 -->
                     <div class="relative aspect-[4/3] h-40 overflow-hidden">
                         <img v-if="game.cover && !errorIds.has(game.id)" :src="game.cover" :alt="game.name"
-                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 game-cover"
                             loading="lazy" @error="errorIds.add(game.id)" />
                         <div v-else
                             class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-gray-400">
@@ -90,6 +90,8 @@
                             </svg>
                             <span class="text-xs">{{ game.name }}</span>
                         </div>
+                        <!-- 磨砂柔化蒙层：降低鲜艳度 -->
+                        <div class="absolute inset-0 bg-white/15 pointer-events-none game-cover-mask"></div>
 
                         <!-- 收藏按钮（左上角） -->
                         <button
@@ -537,6 +539,25 @@ function onDeviceChange(e: Event) {
     -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+/* 封面柔化：降低饱和度与亮度，避免鲜艳图片刺眼 */
+.game-cover {
+    filter: saturate(0.82) brightness(0.96);
+    transition: filter 0.3s ease, transform 0.5s ease;
+}
+
+.game-card:hover .game-cover {
+    filter: saturate(0.92) brightness(1);
+}
+
+/* 磨砂蒙层：hover 时变淡，露出原图 */
+.game-cover-mask {
+    transition: opacity 0.3s ease;
+}
+
+.game-card:hover .game-cover-mask {
+    opacity: 0;
 }
 
 .fade-enter-active,
