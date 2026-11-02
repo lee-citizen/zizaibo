@@ -43,10 +43,20 @@
           </el-icon>
           刷新设备
         </el-button>
+        <el-button size="small" :loading="diagnosing" @click="runDiagnostics">音频诊断</el-button>
       </div>
       <p class="text-xs text-gray-400 leading-relaxed mb-4">
         选择声音输出到哪个设备：选扬声器/耳机 → 你自己能听到；选 BlackHole / CABLE 等虚拟声卡 → 直播软件把麦克风设为该虚拟声卡，观众就能听到 TTS 和背景音乐。
       </p>
+
+      <!-- 诊断信息 -->
+      <div v-if="diagText" class="mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium text-gray-700">诊断信息</span>
+          <el-button size="small" @click="copyDiagnostics">一键复制</el-button>
+        </div>
+        <pre class="bg-gray-900 text-green-300 text-xs p-3 rounded-lg overflow-auto max-h-72 whitespace-pre-wrap">{{ diagText }}</pre>
+      </div>
 
       <div class="flex items-center gap-4 mb-4">
         <span class="text-sm text-gray-600" style="width: 80px">TTS 音量：</span>
@@ -101,6 +111,15 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { Refresh, Download } from "@element-plus/icons-vue";
 import { ipc, ipcEvents, onIpcEvent } from "@renderer/utils/ipcRenderer";
 import { useSpeechStore } from "@renderer/store/modules/speech";
+import {
+  filterOutputDevices,
+  resolveValidDeviceId,
+  setOutputDevice,
+  getCtxSinkId,
+  supportsSetSinkId,
+  getCurrentDeviceId,
+  type OutputDevice,
+} from "@renderer/utils/audio-output";
 import pkg from "../../../../package.json";
 
 const speech = useSpeechStore();
@@ -110,14 +129,16 @@ const appVersion = pkg.version;
 // ---- 语音输出 ----
 const OUTPUT_DEVICE_KEY = "audio-output-device-id";
 const TTS_VOLUME_KEY = "tts-volume";
-const outputDevice = ref(localStorage.getItem(OUTPUT_DEVICE_KEY) || "");
-const ttsVolume = ref(localStorage.getItem(TTS_VOLUME_KEY) !== null ? Number(localStorage.getItem(TTS_VOLUME_KEY)) : 100);
-const audioDevices = ref<MediaDeviceInfo[]>([]);
+const outputDevice = ref(localStorage.getItem(OUTPUT_DEVICE_KEY) || "default");
+const ttsVolume = ref(localStorage.getItem(TTS_VOLUME_KEY) !== null ? Number(localStorage.getItem(TTS_VOLUME_KEY)) : 80);
+const audioDevices = ref<OutputDevice[]>([]);
 
-// 持久化：输出设备切换
+// 持久化 + 实时应用：输出设备切换
 function onOutputDeviceChange(val: string) {
-  localStorage.setItem(OUTPUT_DEVICE_KEY, val);
-  window.dispatchEvent(new CustomEvent("audio-output-device-change", { detail: val }));
+  const id = val || "default";
+  localStorage.setItem(OUTPUT_DEVICE_KEY, id);
+  // 通过统一路由立即切换（AudioContext.setSinkId），不重开窗口
+  setOutputDevice(id);
   ElMessage.success("输出设备已切换");
 }
 
@@ -156,43 +177,89 @@ async function refreshDevices() {
     } catch { /* 忽略 */ }
 
     const list = await navigator.mediaDevices.enumerateDevices();
-    const seen = new Set<string>();
-    audioDevices.value = list
-      .filter((d) => d.kind === "audiooutput")
-      .filter((d) => {
-        if (!d.label || !d.deviceId) return false;
-        if (/^(default|system)\b/i.test(d.label)) return false;
-        const key = d.label.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .map((d) => ({ deviceId: d.deviceId, label: d.label }));
+    const devices = filterOutputDevices(list);
+    audioDevices.value = devices;
 
-    // 如果 localStorage 已有选择且仍在列表里，保持；否则默认选系统默认设备
+    // 校验已保存的 deviceId 是否仍存在，否则重置为 default 并提示
     const saved = localStorage.getItem(OUTPUT_DEVICE_KEY);
-    const stillValid = saved && audioDevices.value.some((d) => d.deviceId === saved);
-    if (stillValid) {
-      outputDevice.value = saved!;
-    } else {
-      // 拿系统默认设备名，匹配列表选中
-      try {
-        const defaultName: string | null = await ipc.app.getDefaultAudioDevice();
-        const matched = defaultName
-          ? audioDevices.value.find((d) => d.label.toLowerCase().includes(defaultName.toLowerCase()))
-          : null;
-        outputDevice.value = matched ? matched.deviceId : (audioDevices.value[0]?.deviceId || "");
-      } catch {
-        outputDevice.value = audioDevices.value[0]?.deviceId || "";
-      }
-      // 自动应用默认选择
-      if (outputDevice.value) onOutputDeviceChange(outputDevice.value);
+    const validId = resolveValidDeviceId(saved, devices);
+    if (saved && saved !== validId) {
+      ElMessage.warning("之前选择的输出设备已不存在，已重置为系统默认");
+      localStorage.setItem(OUTPUT_DEVICE_KEY, validId);
+      setOutputDevice(validId);
     }
+    outputDevice.value = validId;
 
     ElMessage.success("设备列表已刷新");
   } catch {
     ElMessage.error("刷新设备失败");
   }
+}
+
+// ---- 音频诊断 ----
+const diagnosing = ref(false);
+const diagText = ref("");
+
+async function runDiagnostics() {
+  diagnosing.value = true;
+  const lines: string[] = [];
+  try {
+    lines.push(`平台: ${navigator.platform}`);
+    lines.push(`UserAgent: ${navigator.userAgent}`);
+    lines.push(`支持 AudioContext.setSinkId: ${supportsSetSinkId()}`);
+    lines.push(`localStorage 选中设备: ${localStorage.getItem(OUTPUT_DEVICE_KEY) || "(空)"}`);
+    lines.push(`当前路由 deviceId: ${getCurrentDeviceId() || "(default)"}`);
+    try {
+      lines.push(`AudioContext 实际 sinkId: ${await getCtxSinkId() || "(空/default)"}`);
+    } catch (e) {
+      lines.push(`AudioContext 实际 sinkId: 读取失败 ${e}`);
+    }
+
+    // speaker-selection 权限
+    try {
+      const perm = await navigator.permissions.query({ name: "speaker-selection" as PermissionName });
+      lines.push(`speaker-selection 权限: ${perm.state}`);
+    } catch (e) {
+      lines.push(`speaker-selection 权限: 查询失败 ${e}`);
+    }
+
+    // 原始设备枚举
+    const raw = await navigator.mediaDevices.enumerateDevices();
+    const outputs = raw.filter((d) => d.kind === "audiooutput");
+    lines.push(`\n原始 audiooutput 设备 (${outputs.length}):`);
+    outputs.forEach((d, i) => {
+      lines.push(`  [${i}] deviceId=${d.deviceId || "(空)"} label=${d.label || "(空)"} groupId=${d.groupId || "(空)"}`);
+    });
+
+    // 过滤后列表
+    lines.push(`\n过滤后设备 (${audioDevices.value.length}):`);
+    audioDevices.value.forEach((d) => {
+      lines.push(`  - ${d.deviceId} | ${d.label}${d.isDefault ? " [default]" : ""}`);
+    });
+
+    // setSinkId 探针
+    const id = getCurrentDeviceId() || "default";
+    lines.push(`\nsetSinkId 探针 (目标: ${id}):`);
+    try {
+      const testCtx = new AudioContext();
+      await testCtx.setSinkId(id === "default" ? "" : id);
+      lines.push(`  结果: resolve, ctx.sinkId=${testCtx.sinkId || "(空/default)"}`);
+      await testCtx.close();
+    } catch (e) {
+      lines.push(`  结果: reject ${e}`);
+    }
+  } finally {
+    diagText.value = lines.join("\n");
+    diagnosing.value = false;
+  }
+}
+
+function copyDiagnostics() {
+  if (!diagText.value) return;
+  navigator.clipboard.writeText(diagText.value).then(
+    () => ElMessage.success("诊断信息已复制到剪贴板"),
+    () => ElMessage.error("复制失败，请手动选择文本复制"),
+  );
 }
 
 function onTestTts() {

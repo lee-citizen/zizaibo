@@ -203,6 +203,7 @@ import { Top, Star, StarFilled } from '@element-plus/icons-vue'
 import request from '@renderer/utils/request'
 import { useAuthStore } from '@renderer/store/modules/auth'
 import { ipc } from '@renderer/utils/ipcRenderer'
+import { filterOutputDevices, resolveValidDeviceId } from '@renderer/utils/audio-output'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -229,6 +230,7 @@ interface AudioDeviceInfo {
 }
 
 const STORAGE_KEY = 'game-settings'
+const OUTPUT_DEVICE_KEY = 'audio-output-device-id'
 
 // 从 localStorage 读设置，默认 静音=false, 音量=100
 function loadSettings(): GameSettings {
@@ -479,57 +481,28 @@ function openSystemMixer() {
 async function loadAudioDevices() {
     audioLoading.value = true
     try {
-        // 1. 主进程：拿系统默认输出设备名
-        const defaultName: string | null = await window.ipcBridge.invoke('app:getDefaultAudioDevice')
-        console.log('[audio] 系统默认设备名:', defaultName)
-
-        // 2. 先触发一次 getUserMedia，让 enumerateDevices 能拿到 label
+        // 先触发一次 getUserMedia，让 enumerateDevices 能拿到 label
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
             stream.getTracks().forEach(t => t.stop())
         } catch { }
 
-        const devices = await navigator.mediaDevices.enumerateDevices()
+        const list = await navigator.mediaDevices.enumerateDevices()
+        const devices = filterOutputDevices(list)
 
-        // 3. 过滤 + 去重
-        const seen = new Set<string>()  // ← 补上这个！
-        const outputs = devices
-            .filter(d => d.kind === 'audiooutput')
-            .filter(d => {
-                // 过滤 Web API 自动生成的 "Default - xxx" 虚拟节点
-                if (/^default\s*[-—]/i.test(d.label || '')) return false
-                // 去重
-                const key = (d.label || d.deviceId).toLowerCase()
-                if (seen.has(key)) return false
-                seen.add(key)
-                return true
-            })
+        // 校验已保存 deviceId 是否仍存在
+        const saved = localStorage.getItem(OUTPUT_DEVICE_KEY)
+        const validId = resolveValidDeviceId(saved, devices)
+        if (saved && saved !== validId) {
+            localStorage.setItem(OUTPUT_DEVICE_KEY, validId)
+        }
 
-        console.log('[audio] Web 枚举到的输出设备:', outputs.map(d => d.label))
-
-        // 4. 智能匹配：去掉括号后缀 + 去空格
-        const normalize = (s: string) =>
-            s.toLowerCase()
-                .replace(/\s*$[^)]*$/g, '')  // ← 修正正则！
-                .replace(/\s+/g, '')
-
-        const normalizedDefault = defaultName ? normalize(defaultName) : ''
-
-        const selectedId = localStorage.getItem('audio-output-device-id') || 'default'
-        audioDevices.value = outputs.map(d => {
-            const label = d.label || d.deviceId
-            const normalizedLabel = normalize(label)
-            const isDefault = !!defaultName && (
-                label.toLowerCase() === defaultName.toLowerCase() ||
-                normalizedLabel === normalizedDefault ||
-                normalizedLabel.includes(normalizedDefault) ||
-                normalizedDefault.includes(normalizedLabel)
-            )
-            const isSelected = selectedId === d.deviceId || (selectedId === 'default' && isDefault)
-            return { deviceId: d.deviceId, label, isDefault, isSelected }
-        })
-
-        console.log('[audio] 最终设备列表:', audioDevices.value)
+        audioDevices.value = devices.map(d => ({
+            deviceId: d.deviceId,
+            label: d.label,
+            isDefault: d.isDefault,
+            isSelected: d.deviceId === validId,
+        }))
     } catch (e) {
         console.error('加载音频设备失败:', e)
     } finally {

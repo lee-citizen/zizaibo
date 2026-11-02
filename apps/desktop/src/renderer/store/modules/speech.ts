@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { ipc } from "@renderer/utils/ipcRenderer";
+import { routeAudioElement } from "@renderer/utils/audio-output";
 import type { UserVoiceTrack, VoiceMeta } from "ipc-contract";
 
 // ===================== 类型定义 =====================
@@ -365,72 +366,25 @@ export const useSpeechStore = defineStore("speech", () => {
     isSpeaking.value = false;
   }
 
-  /** 读取用户设置的 TTS 音量（0~1），默认 1.0（最大音量） */
+  /** 读取用户设置的 TTS 音量（0~1），默认 0.8（80%） */
   function getTtsVolume(): number {
     const raw = localStorage.getItem("tts-volume");
-    if (raw === null) return 1.0; // 未设置过，默认最大音量
+    if (raw === null) return 0.8; // 未设置过，默认 80% 音量
     const v = Number(raw);
-    return Number.isFinite(v) ? Math.max(0, Math.min(1, v / 100)) : 1.0;
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v / 100)) : 0.8;
   }
 
-  /** 把音频元素的输出设备切到用户选择的设备。带超时保护，避免 setSinkId 卡住导致播放永远不开始。 */
-  async function applyOutputDevice(audioEl: HTMLAudioElement): Promise<void> {
-    const deviceId = localStorage.getItem("audio-output-device-id") || "";
-    if (!deviceId || deviceId === "default") return;
-    if (typeof audioEl.setSinkId !== "function") return;
-    try {
-      await Promise.race([
-        audioEl.setSinkId(deviceId),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("sinkId timeout")), 1000)),
-      ]);
-    } catch {
-      /* 设备不存在/超时：忽略，继续用默认设备播放 */
-    }
-  }
+  // 输出设备由统一路由（AudioContext.setSinkId）控制，音频元素只需 routeAudioElement 接入一次
 
   /**
-   * 应用启动时自动选中系统默认播放设备。
-   * 仅当能精确匹配到系统默认设备时才设置，避免选错设备导致无声。
-   * 匹配不到时不设置，音频走系统默认输出（setSinkId 不调用）。
+   * 应用启动时确保输出设备有值。
+   * 使用 Chromium 的 'default' 别名（而非按设备名匹配），
+   * 这样无论系统默认设备是什么，都能正确跟随系统默认输出。
    */
   async function ensureDefaultOutputDevice(): Promise<void> {
     const saved = localStorage.getItem("audio-output-device-id");
     if (saved) return; // 已有选择，不覆盖
-
-    try {
-      // 先触发一次 getUserMedia，让 enumerateDevices 能拿到 label
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((t) => t.stop());
-      } catch { /* 忽略 */ }
-
-      const list = await navigator.mediaDevices.enumerateDevices();
-      const seen = new Set<string>();
-      const devices = list
-        .filter((d) => d.kind === "audiooutput")
-        .filter((d) => {
-          if (!d.label || !d.deviceId) return false;
-          if (/^(default|system)\b/i.test(d.label)) return false;
-          const key = d.label.toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-      if (devices.length === 0) return;
-
-      // 拿系统默认设备名，精确匹配才设置；匹配不到则不设置（走系统默认输出）
-      try {
-        const defaultName: string | null = await ipc.app.getDefaultAudioDevice();
-        const matched = defaultName
-          ? devices.find((d) => d.label.toLowerCase().includes(defaultName.toLowerCase()))
-          : null;
-        if (matched) {
-          localStorage.setItem("audio-output-device-id", matched.deviceId);
-          window.dispatchEvent(new CustomEvent("audio-output-device-change", { detail: matched.deviceId }));
-        }
-      } catch { /* 忽略 */ }
-    } catch { /* 忽略 */ }
+    localStorage.setItem("audio-output-device-id", "default");
   }
 
   /** 播放一段 base64 mp3（edge-tts 结果） */
@@ -446,12 +400,11 @@ export const useSpeechStore = defineStore("speech", () => {
         isSpeaking.value = false;
         ElMessage.error({ message: "音频播放失败", offset: 40 });
       };
-      // 监听输出设备切换
-      window.addEventListener("audio-output-device-change", () => void applyOutputDevice(edgeAudio!));
+      // 接入统一音频路由（输出设备由 AudioContext.setSinkId 控制）
+      routeAudioElement(edgeAudio);
     }
     // 暂停当前播放；设置新 src 会自动中断旧播放并加载新音频
     edgeAudio.pause();
-    await applyOutputDevice(edgeAudio);
     edgeAudio.volume = getTtsVolume();
     edgeAudio.src = url;
     try {
@@ -759,6 +712,8 @@ export const useSpeechStore = defineStore("speech", () => {
       audio.addEventListener("pause", () => {
         voiceIsPlaying.value = false;
       });
+      // 接入统一音频路由
+      routeAudioElement(audio);
     }
     return audio;
   }
@@ -965,7 +920,8 @@ export const useSpeechStore = defineStore("speech", () => {
   function ensureGuideAudio(): HTMLAudioElement {
     if (!guideAudio) {
       guideAudio = new Audio();
-      window.addEventListener("audio-output-device-change", () => void applyOutputDevice(guideAudio!));
+      // 接入统一音频路由
+      routeAudioElement(guideAudio);
     }
     return guideAudio;
   }
@@ -986,7 +942,6 @@ export const useSpeechStore = defineStore("speech", () => {
     }
     guideVoiceIndex.value = idx;
     const a = ensureGuideAudio();
-    await applyOutputDevice(a);
     a.volume = getTtsVolume();
     a.src = voiceTracks.value[idx].url;
     a.play().catch(() => {

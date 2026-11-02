@@ -26,6 +26,7 @@ import { onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useSpeechStore } from "@renderer/store/modules/speech";
 import { useAuthStore } from "@renderer/store/modules/auth";
+import { initAudioOutput } from "@renderer/utils/audio-output";
 
 const speech = useSpeechStore();
 const auth = useAuthStore();
@@ -56,6 +57,8 @@ async function bootstrapAuth() {
 
 onMounted(() => {
   ipc.app.winReady();
+  // 初始化统一音频输出路由（从 localStorage 读取设备并应用）
+  initAudioOutput();
   // 首次启动自动选中系统默认播放设备
   void speech.ensureDefaultOutputDevice();
   // 启动鉴权

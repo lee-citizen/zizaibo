@@ -77,6 +77,41 @@ function buildAudioPatchScript(volume: number, sinkDeviceId: string) {
           nodeProto.__gameAudioPatched = true;
         }
 
+        // 劫持 AudioContext / webkitAudioContext 构造函数：
+        // 每个新建的上下文立即 setSinkId，并加入 contexts 数组便于后续切换
+        function patchCtxCtor(name) {
+          var Ctor = window[name];
+          if (!Ctor || Ctor.__gameAudioPatched) return;
+          var Wrapped = function() {
+            var ctx = new (Function.prototype.bind.apply(Ctor, [null].concat(Array.prototype.slice.call(arguments))))();
+            if (contexts.indexOf(ctx) === -1) contexts.push(ctx);
+            if (state.sinkId && ctx.setSinkId && ctx.sinkId !== state.sinkId) {
+              ctx.setSinkId(state.sinkId).catch(function(){});
+            }
+            return ctx;
+          };
+          Wrapped.prototype = Ctor.prototype;
+          try { Object.defineProperty(window, name, { value: Wrapped, configurable: true }); } catch(e) {}
+          Ctor.__gameAudioPatched = true;
+        }
+        patchCtxCtor('AudioContext');
+        patchCtxCtor('webkitAudioContext');
+
+        // 兜底：AudioContext.resume 时再尝试一次 setSinkId（覆盖注入前已创建的上下文）
+        var ctxProto = (window.AudioContext || window.webkitAudioContext || {}).prototype;
+        if (ctxProto && ctxProto.resume && !ctxProto.__gameAudioResumePatched) {
+          var origResume = ctxProto.resume;
+          ctxProto.resume = function() {
+            var self = this;
+            if (contexts.indexOf(self) === -1) contexts.push(self);
+            if (state.sinkId && self.setSinkId && self.sinkId !== state.sinkId) {
+              self.setSinkId(state.sinkId).catch(function(){});
+            }
+            return origResume.apply(self, arguments);
+          };
+          ctxProto.__gameAudioResumePatched = true;
+        }
+
         // 劫持 HTMLMediaElement.volume 的 setter，使游戏自身的音量设置被覆盖
         var mediaProto = (window.HTMLMediaElement || {}).prototype;
         if (mediaProto && !mediaProto.__gameAudioPatched) {

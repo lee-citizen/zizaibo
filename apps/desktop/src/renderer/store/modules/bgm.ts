@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { ipc } from "@renderer/utils/ipcRenderer";
+import { routeAudioElement } from "@renderer/utils/audio-output";
 import type { MusicMeta, UserMusicTrack } from "ipc-contract";
 
 import music1 from "@renderer/assets/bg_music/music_1.mp3";
@@ -269,16 +270,8 @@ export const useBgmStore = defineStore("bgm", () => {
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
 
-    // 应用用户选择的输出设备，并监听切换
-    const applyDevice = () => {
-      if (!audio) return;
-      const deviceId = localStorage.getItem("audio-output-device-id") || "";
-      if (deviceId && deviceId !== "default" && typeof audio.setSinkId === "function") {
-        audio.setSinkId(deviceId).catch(() => { /* 设备不存在时忽略 */ });
-      }
-    };
-    applyDevice();
-    window.addEventListener("audio-output-device-change", applyDevice);
+    // 接入统一音频路由：输出设备由 AudioContext.setSinkId 统一控制
+    routeAudioElement(audio);
 
     // 加载元数据 + 对账磁盘
     try {

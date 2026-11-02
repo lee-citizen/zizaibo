@@ -49,11 +49,15 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 function onAppReady() {
   // 放行麦克风权限：现场录音功能需要 MediaRecorder + getUserMedia
+  // 放行 speaker-selection 权限：AudioContext.setSinkId / HTMLAudioElement.setSinkId 需要
   // （webSecurity: false 下多数情况自动放行，此处显式处理以兼容 macOS 权限弹窗）
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    // media 涵盖麦克风与摄像头（现场录音需要）
-    callback(permission === "media");
+    callback(permission === "media" || permission === "speaker-selection");
   });
+  session.defaultSession.setPermissionCheckHandler(
+    (_wc, permission, _requestingOrigin, _external) =>
+      permission === "media" || permission === "speaker-selection",
+  );
 
   // 自定义协议：app-user-music://<host>/<encoded fileName>
   //   host = "music" -> userData/bg-music-user/<fileName>
