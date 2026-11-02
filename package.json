@@ -35,6 +35,7 @@
     "electron": "44.5.1",
     "electron-builder": "^26.17.0",
     "fs-extra": "^11.3.0",
+    "javascript-obfuscator": "^5.9.0",
     "minimist": "^1.2.8",
     "rolldown": "^1.2.12",
     "sass": "^1.105.1",

@@ -8,10 +8,11 @@
   "description": "electron-vite-template desktop app",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm clean && pnpm build:electron && pnpm build:renderer",
+    "build": "pnpm clean && pnpm build:electron && pnpm build:renderer && pnpm obfuscate",
     "clean": "node ../../tools/build/tasks/clean.ts",
     "build:electron": "node ../../tools/build/tasks/build-electron.ts -m prod",
     "build:renderer": "node ../../tools/build/tasks/build-renderer.ts",
+    "obfuscate": "node ../../tools/build/tasks/obfuscate.ts",
     "build:bytecode": "pnpm build && node ../../tools/bytecode/compile.mjs"
   },
   "dependencies": {
