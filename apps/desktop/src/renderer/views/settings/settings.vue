@@ -14,7 +14,9 @@
       <h2 class="text-base font-semibold text-gray-800 mb-3">检查更新</h2>
       <div class="flex items-center gap-4 flex-wrap">
         <el-button type="primary" :loading="updateChecking" @click="onCheckUpdate">
-          <el-icon class="mr-1"><Download /></el-icon>
+          <el-icon class="mr-1">
+            <Download />
+          </el-icon>
           检查更新
         </el-button>
         <span class="text-sm" :class="updateError ? 'text-red-400' : 'text-gray-500'">
@@ -43,7 +45,7 @@
           </el-icon>
           刷新设备
         </el-button>
-        <el-button size="small" :loading="diagnosing" @click="runDiagnostics">音频诊断</el-button>
+        <!-- <el-button size="small" :loading="diagnosing" @click="runDiagnostics">音频诊断</el-button> -->
       </div>
       <p class="text-xs text-gray-400 leading-relaxed mb-4">
         选择声音输出到哪个设备：选扬声器/耳机 → 你自己能听到；选 BlackHole / CABLE 等虚拟声卡 → 直播软件把麦克风设为该虚拟声卡，观众就能听到 TTS 和背景音乐。
@@ -55,7 +57,8 @@
           <span class="text-sm font-medium text-gray-700">诊断信息</span>
           <el-button size="small" @click="copyDiagnostics">一键复制</el-button>
         </div>
-        <pre class="bg-gray-900 text-green-300 text-xs p-3 rounded-lg overflow-auto max-h-72 whitespace-pre-wrap">{{ diagText }}</pre>
+        <pre
+          class="bg-gray-900 text-green-300 text-xs p-3 rounded-lg overflow-auto max-h-72 whitespace-pre-wrap">{{ diagText }}</pre>
       </div>
 
       <div class="flex items-center gap-4 mb-4">

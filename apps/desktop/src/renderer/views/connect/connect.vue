@@ -75,10 +75,10 @@
             <span v-if="connect.pendingCount" class="text-amber-500">（+{{ connect.pendingCount }}）</span>
           </el-checkbox>
           <div class="flex items-center gap-1">
-            <el-button size="small" text type="info" :disabled="!connect.connected" :loading="diagnosing"
+            <!-- <el-button size="small" text type="info" :disabled="!connect.connected" :loading="diagnosing"
               @click="onDiagnose">
               诊断
-            </el-button>
+            </el-button> -->
             <el-button size="small" text type="danger" :disabled="!connect.messages.length"
               @click="connect.clearMessages">
               清空
