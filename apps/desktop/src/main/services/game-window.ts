@@ -11,6 +11,8 @@ const DESKTOP_UA =
 // 记录当前打开的游戏窗口（避免重复开多个）
 let currentGameWin: BrowserWindow | null = null
 
+const isWindows = process.platform === 'win32'
+
 export function openGameWindow(
   url: string,
   title?: string,
@@ -33,7 +35,9 @@ export function openGameWindow(
     height: GAME_WIN_HEIGHT,
     x, y,
     title: title || '游戏',
-    titleBarStyle: IsUseSysTitle ? 'default' : 'hidden',
+    // macOS 下 hidden 仍保留原生红绿灯（可关闭）；Windows 下 hidden 会连标题栏和窗口按钮
+    // 一起去掉导致无法关闭，因此 Windows 使用系统默认标题栏
+    titleBarStyle: IsUseSysTitle || isWindows ? 'default' : 'hidden',
     backgroundColor: '#000',
     webPreferences: {
       contextIsolation: true,
@@ -44,6 +48,13 @@ export function openGameWindow(
       devTools: process.env.NODE_ENV === 'development',
     },
   })
+
+  // Windows 使用系统标题栏后，窗口整体高度会比内容多出标题栏，这里把内容区固定回
+  // 393x800 并重新居中，避免游戏底部被裁切、窗口位置偏移
+  if (isWindows) {
+    gameWin.setContentSize(GAME_WIN_WIDTH, GAME_WIN_HEIGHT)
+    gameWin.center()
+  }
 
   // 1. 设置桌面端 Chrome UA：与浏览器直接访问行为一致
   gameWin.webContents.setUserAgent(DESKTOP_UA)
