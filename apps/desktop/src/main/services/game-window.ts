@@ -38,6 +38,8 @@ export function openGameWindow(
     // macOS 下 hidden 仍保留原生红绿灯（可关闭）；Windows 下 hidden 会连标题栏和窗口按钮
     // 一起去掉导致无法关闭，因此 Windows 使用系统默认标题栏
     titleBarStyle: IsUseSysTitle || isWindows ? 'default' : 'hidden',
+    // Windows 下系统标题栏会带出菜单栏（设置｜Edit｜帮助），先隐藏（按 Alt 可临时唤出）
+    autoHideMenuBar: true,
     backgroundColor: '#000',
     webPreferences: {
       contextIsolation: true,
@@ -52,6 +54,8 @@ export function openGameWindow(
   // Windows 使用系统标题栏后，窗口整体高度会比内容多出标题栏，这里把内容区固定回
   // 393x800 并重新居中，避免游戏底部被裁切、窗口位置偏移
   if (isWindows) {
+    // 彻底移除菜单栏，避免游戏操作中误按 Alt 唤出
+    gameWin.removeMenu()
     gameWin.setContentSize(GAME_WIN_WIDTH, GAME_WIN_HEIGHT)
     gameWin.center()
   }
