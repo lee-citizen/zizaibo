@@ -7,7 +7,7 @@ import type { IpcImpl, AppContract } from "ipc-contract";
 import { webContentSend } from "./web-content-send";
 import { IsUseSysTitle } from "@main/config/const";
 import { otherWindowConfig } from "@main/config/windows-config";
-import { openGameWindow } from "./game-window";
+import { openGameWindow, updateGameAudio } from "./game-window";
 import { gameJump } from "./game-jump";
 import { downloadAndInstallUpdate } from "./update-downloader";
 import { getDefaultOutputDeviceName, openSystemMixer, detectVirtualAudioDevice } from "./audio-devices";
@@ -52,6 +52,9 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
       volume: args.volume,
       sinkDeviceId: args.sinkDeviceId,
     });
+  },
+  updateGameAudio: (_event, args) => {
+    return updateGameAudio(args);
   },
   gameJump: async (_event, args) => {
     return gameJump(args.token, args.gameKey);

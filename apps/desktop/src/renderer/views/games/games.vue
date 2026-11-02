@@ -282,9 +282,21 @@ function scrollToTop() {
     getScrollTarget().scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// 自动保存设置
+// 自动保存设置 + 实时同步到已打开的游戏窗口
+let gameAudioTimer: ReturnType<typeof setTimeout> | undefined
 watch(settings, (val) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
+
+    // 50ms 防抖：拖动滑块时合并连续变化，静音开关同样走这里
+    if (gameAudioTimer) clearTimeout(gameAudioTimer)
+    gameAudioTimer = setTimeout(() => {
+        const deviceId = localStorage.getItem('audio-output-device-id') || ''
+        ipc.app.updateGameAudio({
+            mute: val.mute,
+            volume: val.volume / 100,
+            sinkDeviceId: deviceId === 'default' ? '' : deviceId,
+        }).catch(() => {})
+    }, 50)
 }, { deep: true })
 
 // ============ ⭐ 收藏相关（本地存储，预留线上接口） ============

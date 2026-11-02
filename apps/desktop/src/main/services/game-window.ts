@@ -15,6 +15,162 @@ let currentGameWin: BrowserWindow | null = null
 
 const isWindows = process.platform === 'win32'
 
+/** 当前游戏窗口的音频状态（更新时复用，避免每次都要重开窗口） */
+let currentGameAudio = { mute: false, volume: 1, sinkDeviceId: '' }
+
+function clampVolume(volume: number) {
+  return Math.max(0, Math.min(1, volume))
+}
+
+/**
+ * 生成音频注入脚本：
+ * - 劫持 AudioNode.prototype.connect，所有连到 context.destination 的节点被改连到
+ *   该上下文的 masterGain，从而统一控制 Web Audio 输出音量（无需游戏创建 GainNode）。
+ * - 劫持 HTMLMediaElement.prototype.volume 的 setter，强制使用我们设定的音量。
+ * - 首次执行安装拦截并暴露 window.__gameAudio，之后每次执行只更新音量 / 输出设备。
+ */
+function buildAudioPatchScript(volume: number, sinkDeviceId: string) {
+  const v = clampVolume(volume)
+  const sinkId = JSON.stringify(sinkDeviceId || '')
+  return `
+    (function() {
+      var v = ${v};
+      var sinkId = ${sinkId};
+      var api = window.__gameAudio;
+      if (!api) {
+        var state = { volume: v, sinkId: sinkId };
+        var contexts = [];
+
+        // 保存 context.destination -> masterGain 的映射，劫持 connect 时统一改道
+        function getMaster(ctx) {
+          if (ctx.__masterGain) return ctx.__masterGain;
+          try {
+            var mg = ctx.createGain();
+            mg.gain.value = state.volume;
+            var dest = ctx.destination;
+            // 用原始 connect 直接连到真实 destination，避免再次被劫持造成自环
+            __origConnect.call(mg, dest);
+            ctx.__masterGain = mg;
+            contexts.push(ctx);
+          } catch(e) {}
+          return ctx.__masterGain;
+        }
+
+        // 劫持 AudioNode.prototype.connect
+        var AudioNode = window.AudioNode || window.AudioNode;
+        var nodeProto = AudioNode && AudioNode.prototype;
+        var __origConnect = nodeProto && nodeProto.connect;
+        if (nodeProto && __origConnect && !nodeProto.__gameAudioPatched) {
+          nodeProto.connect = function(dest) {
+            try {
+              if (dest && dest.context && dest === dest.context.destination) {
+                var master = getMaster(dest.context);
+                if (master) {
+                  var args = Array.prototype.slice.call(arguments);
+                  args[0] = master;
+                  return __origConnect.apply(this, args);
+                }
+              }
+            } catch(e) {}
+            return __origConnect.apply(this, arguments);
+          };
+          nodeProto.__gameAudioPatched = true;
+        }
+
+        // 劫持 HTMLMediaElement.volume 的 setter，使游戏自身的音量设置被覆盖
+        var mediaProto = (window.HTMLMediaElement || {}).prototype;
+        if (mediaProto && !mediaProto.__gameAudioPatched) {
+          try {
+            var volDesc = Object.getOwnPropertyDescriptor(mediaProto, 'volume');
+            var mutedDesc = Object.getOwnPropertyDescriptor(mediaProto, 'muted');
+            if (volDesc) {
+              Object.defineProperty(mediaProto, 'volume', {
+                configurable: true,
+                get: function() { return state.volume; },
+                set: function() { volDesc.set.call(this, state.volume); },
+              });
+            }
+            var origPlay = mediaProto.play;
+            mediaProto.play = function() {
+              try { this.volume = state.volume; if (mutedDesc) mutedDesc.set.call(this, false); } catch(e) {}
+              return origPlay.apply(this, arguments);
+            };
+            mediaProto.__gameAudioPatched = true;
+          } catch(e) {}
+        }
+
+        // 给已存在的音频/视频元素立即应用音量
+        function applyMedia() {
+          document.querySelectorAll('audio, video').forEach(function(el) {
+            try { el.volume = state.volume; el.muted = false; } catch(e) {}
+            if (state.sinkId && el.setSinkId && el.sinkId !== state.sinkId) {
+              el.setSinkId(state.sinkId).catch(function(){});
+            }
+          });
+        }
+
+        api = window.__gameAudio = {
+          setVolume: function(next) {
+            state.volume = next;
+            contexts.forEach(function(ctx) {
+              try { if (ctx.__masterGain) ctx.__masterGain.gain.value = next; } catch(e) {}
+            });
+            applyMedia();
+          },
+          setSink: function(next) {
+            state.sinkId = next;
+            contexts.forEach(function(ctx) {
+              try {
+                if (ctx.setSinkId && ctx.sinkId !== next) ctx.setSinkId(next).catch(function(){});
+              } catch(e) {}
+            });
+            applyMedia();
+          },
+          applyMedia: applyMedia,
+        };
+
+        new MutationObserver(applyMedia).observe(document.documentElement, { childList: true, subtree: true });
+        applyMedia();
+      }
+      api.setVolume(v);
+      api.setSink(sinkId);
+    })();
+  `
+}
+
+/** 把当前音频状态注入到游戏窗口（页面重载或设置变化时调用） */
+function injectGameAudio(win: BrowserWindow) {
+  if (win.isDestroyed()) return
+  const { volume, sinkDeviceId } = currentGameAudio
+  win.webContents
+    .executeJavaScript(buildAudioPatchScript(volume, sinkDeviceId))
+    .then(() => console.log('[game] 音量脚本注入成功, v=', clampVolume(volume)))
+    .catch((e) => console.error('[game] 注入失败:', e))
+}
+
+/**
+ * 实时更新已打开游戏窗口的音量 / 静音 / 输出设备。
+ * @returns 是否找到可更新的游戏窗口
+ */
+export function updateGameAudio(options: {
+  mute?: boolean
+  volume?: number
+  sinkDeviceId?: string
+}): boolean {
+  currentGameAudio = {
+    mute: options.mute ?? currentGameAudio.mute,
+    volume: clampVolume(options.volume ?? currentGameAudio.volume),
+    sinkDeviceId: options.sinkDeviceId ?? currentGameAudio.sinkDeviceId,
+  }
+
+  const win = currentGameWin
+  if (!win || win.isDestroyed()) return false
+
+  win.webContents.setAudioMuted(currentGameAudio.mute)
+  injectGameAudio(win)
+  return true
+}
+
 /** 按屏幕可用工作区等比缩小，保持 9:18，宽高任一方向都不溢出 */
 function getGameContentSize(workArea: { width: number; height: number }) {
   const scale = Math.min(
@@ -173,76 +329,24 @@ export function openGameWindow(
   gameWin.loadURL(url)
   gameWin.once('ready-to-show', () => gameWin.show())
 
-  // ✅ 用 Electron 原生 API 静音 + 兜底 Web Audio 拦截
-  console.log('[game] 设置音频:', { mute, volume })
+  // 记录窗口与音频状态：静音用 Electron 原生 API，音量/设备用注入脚本，两者都可实时更新
+  currentGameWin = gameWin
+  currentGameAudio = { mute, volume: clampVolume(volume), sinkDeviceId }
+  console.log('[game] 设置音频:', currentGameAudio)
   gameWin.webContents.setAudioMuted(mute)
 
-  // 如果没静音，额外注脚本拦截 Web Audio API（部分游戏需要）
-  if (!mute) {
-    const v = Math.max(0, Math.min(1, volume))
-    const sinkId = JSON.stringify(sinkDeviceId)
-    const patchScript = `
-      (function() {
-        var v = ${v};
-        var sinkId = ${sinkId};
-        // 拦截 Web Audio API
-        var _AC = window.AudioContext;
-        if (_AC && !_AC.__patched) {
-          var proto = _AC.prototype;
-          if (proto.createGain && proto.createGain.__wrapped !== true) {
-            var origCreateGain = proto.createGain;
-            proto.createGain = function() {
-              var node = origCreateGain.apply(this, arguments);
-              try { node.gain.value = v; } catch(e) {}
-              return node;
-            };
-            proto.createGain.__wrapped = true;
-          }
-          // 给 AudioContext 设置输出设备（setSinkId，Chrome/Edge 支持）
-          if (sinkId && proto.setSinkId) {
-            var origResume = proto.resume;
-            proto.resume = function() {
-              var r = origResume.apply(this, arguments);
-              if (this.sinkId !== sinkId) {
-                this.setSinkId(sinkId).catch(function(){});
-              }
-              return r;
-            };
-          }
-          _AC.__patched = true;
-        }
-        // 同时处理 DOM 媒体元素（万一有）
-        function applyMedia() {
-          document.querySelectorAll('audio, video').forEach(function(el) {
-            el.volume = v;
-            el.muted = false;
-            if (sinkId && el.setSinkId && el.sinkId !== sinkId) {
-              el.setSinkId(sinkId).catch(function(){});
-            }
-          });
-        }
-        applyMedia();
-        var mo = new MutationObserver(applyMedia);
-        mo.observe(document.documentElement, { childList: true, subtree: true });
-      })();
-    `
-    // 页面加载完注一次，再延迟注两次（SPA 游戏可能动态创建 AudioContext）
-    const inject = () => {
-      if (gameWin.isDestroyed()) return
-      gameWin.webContents.executeJavaScript(patchScript)
-        .then(() => console.log('[game] 音量脚本注入成功, v=', v))
-        .catch(e => console.error('[game] 注入失败:', e))
-    }
-    gameWin.webContents.on('did-finish-load', inject)
-    setTimeout(inject, 2000)
-    setTimeout(inject, 5000)
-  }
+  // 页面加载完注一次，再延迟注两次（SPA 游戏可能动态创建 AudioContext）
+  // dom-ready 比 did-finish-load 更早，尽量在游戏创建 AudioContext 之前安装拦截
+  const inject = () => injectGameAudio(gameWin)
+  gameWin.webContents.on('dom-ready', inject)
+  gameWin.webContents.on('did-finish-load', inject)
+  setTimeout(inject, 2000)
+  setTimeout(inject, 5000)
 
   gameWin.on('closed', () => {
     if (currentGameWin === gameWin) currentGameWin = null
   })
 
-  currentGameWin = gameWin
   return gameWin
 }
 

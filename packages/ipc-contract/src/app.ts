@@ -79,6 +79,11 @@ export interface AppContract {
   /** 打开游戏窗口（手机尺寸 BrowserWindow） */
   openGameWindow(args: OpenGameWindowArgs): void;
   /**
+   * 实时更新已打开游戏窗口的音量 / 静音 / 输出设备（不重新打开窗口）
+   * @returns 是否找到可更新的游戏窗口
+   */
+  updateGameAudio(args: GameAudioArgs): boolean;
+  /**
    * 游戏跳转：调用后台 /api/v1/game/jump 接口，返回游戏真实 URL
    * 401 时抛出 'UNAUTHORIZED' 错误
    */
@@ -330,6 +335,16 @@ export interface SetStoreValueArgs {
 /** getStoreValue / deleteStoreValue 的载荷 */
 export interface StoreKeyArgs {
   key: string;
+}
+
+/** updateGameAudio 的载荷，任意字段不传则保留当前值 */
+export interface GameAudioArgs {
+  /** 是否静音 */
+  mute?: boolean;
+  /** 音量 0~1 */
+  volume?: number;
+  /** 音频输出设备 ID（setSinkId），空字符串表示系统默认 */
+  sinkDeviceId?: string;
 }
 
 /** openGameWindow 的载荷 */
