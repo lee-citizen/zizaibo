@@ -1,8 +1,10 @@
 import { BrowserWindow, screen } from 'electron'
 import { IsUseSysTitle } from '@main/config/const'
 
-const GAME_WIN_WIDTH = 393
-const GAME_WIN_HEIGHT = 800
+// 手机竖屏比例：宽 / 高 = 0.5（9:18），目标高 960 → 宽 480
+const GAME_ASPECT_RATIO = 0.5
+const GAME_BASE_HEIGHT = 960
+const GAME_BASE_WIDTH = Math.round(GAME_BASE_HEIGHT * GAME_ASPECT_RATIO)
 
 // 桌面端 Chrome UA：与浏览器直接访问一致，避免移动版页面的触摸逻辑干扰点击
 const DESKTOP_UA =
@@ -12,6 +14,53 @@ const DESKTOP_UA =
 let currentGameWin: BrowserWindow | null = null
 
 const isWindows = process.platform === 'win32'
+
+/** 按屏幕可用工作区等比缩小，保持 9:18，宽高任一方向都不溢出 */
+function getGameContentSize(workArea: { width: number; height: number }) {
+  const scale = Math.min(
+    1,
+    workArea.width / GAME_BASE_WIDTH,
+    workArea.height / GAME_BASE_HEIGHT,
+  )
+  let width = Math.max(1, Math.floor(GAME_BASE_WIDTH * scale))
+  let height = width * 2
+  if (height > workArea.height) {
+    height = Math.max(1, Math.floor(workArea.height))
+    width = Math.max(1, Math.floor(height / 2))
+    height = width * 2
+  }
+  return { width, height }
+}
+
+/**
+ * 设置内容区尺寸并保证窗口外框（Windows 系统标题栏）也不超出工作区。
+ * 内容区严格保持宽:高 = 1:2。
+ */
+function fitGameWindow(
+  win: BrowserWindow,
+  workArea: { x: number; y: number; width: number; height: number },
+) {
+  let { width, height } = getGameContentSize(workArea)
+
+  for (let i = 0; i < 4; i++) {
+    win.setContentSize(width, height)
+    const [outerWidth, outerHeight] = win.getSize()
+    if (outerWidth <= workArea.width && outerHeight <= workArea.height) break
+
+    const scale = Math.min(workArea.width / outerWidth, workArea.height / outerHeight)
+    height = Math.max(1, Math.floor(height * scale))
+    width = Math.max(1, Math.floor(height / 2))
+    height = width * 2
+  }
+
+  // 按最终外框尺寸居中到工作区，避免被任务栏 / Dock 遮挡
+  const [outerWidth, outerHeight] = win.getSize()
+  win.setPosition(
+    Math.round(workArea.x + (workArea.width - outerWidth) / 2),
+    Math.round(workArea.y + (workArea.height - outerHeight) / 2),
+  )
+  return win.getContentSize()
+}
 
 export function openGameWindow(
   url: string,
@@ -26,14 +75,14 @@ export function openGameWindow(
     currentGameWin = null
   }
 
-  const { workAreaSize } = screen.getPrimaryDisplay()
-  const x = Math.round((workAreaSize.width - GAME_WIN_WIDTH) / 2)
-  const y = Math.round((workAreaSize.height - GAME_WIN_HEIGHT) / 2)
+  const { workArea } = screen.getPrimaryDisplay()
+  const initialSize = getGameContentSize(workArea)
 
   const gameWin = new BrowserWindow({
-    width: GAME_WIN_WIDTH,
-    height: GAME_WIN_HEIGHT,
-    x, y,
+    width: initialSize.width,
+    height: initialSize.height,
+    // width / height 表示内容区尺寸，保证严格 9:18
+    useContentSize: true,
     title: title || '游戏',
     // macOS 下 hidden 仍保留原生红绿灯（可关闭）；Windows 下 hidden 会连标题栏和窗口按钮
     // 一起去掉导致无法关闭，因此 Windows 使用系统默认标题栏
@@ -51,14 +100,13 @@ export function openGameWindow(
     },
   })
 
-  // Windows 使用系统标题栏后，窗口整体高度会比内容多出标题栏，这里把内容区固定回
-  // 393x800 并重新居中，避免游戏底部被裁切、窗口位置偏移
   if (isWindows) {
     // 彻底移除菜单栏，避免游戏操作中误按 Alt 唤出
     gameWin.removeMenu()
-    gameWin.setContentSize(GAME_WIN_WIDTH, GAME_WIN_HEIGHT)
-    gameWin.center()
   }
+  // 统一按 9:18 设置内容区；Windows 标题栏导致外框超出工作区时再等比收缩并居中
+  const contentSize = fitGameWindow(gameWin, workArea)
+  console.log('[game] 窗口内容区尺寸:', contentSize)
 
   // 1. 设置桌面端 Chrome UA：与浏览器直接访问行为一致
   gameWin.webContents.setUserAgent(DESKTOP_UA)
@@ -98,10 +146,12 @@ export function openGameWindow(
       `)
       .then((contentWidth: number) => {
         if (gameWin.isDestroyed()) return
-        if (contentWidth > GAME_WIN_WIDTH) {
-          const zoom = GAME_WIN_WIDTH / contentWidth
+        // 使用当前内容区实际宽度，避免窗口尺寸变化后缩放与窗口不一致
+        const [winWidth] = gameWin.getContentSize()
+        if (contentWidth > winWidth) {
+          const zoom = winWidth / contentWidth
           gameWin.webContents.setZoomFactor(zoom)
-          console.log(`[game] 缩放: ${zoom.toFixed(3)} (内容宽 ${contentWidth} / 窗口 ${GAME_WIN_WIDTH})`)
+          console.log(`[game] 缩放: ${zoom.toFixed(3)} (内容宽 ${contentWidth} / 窗口 ${winWidth})`)
         } else {
           gameWin.webContents.setZoomFactor(1)
         }
