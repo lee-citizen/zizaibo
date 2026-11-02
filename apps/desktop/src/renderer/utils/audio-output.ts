@@ -18,6 +18,8 @@ let audioCtx: AudioContext | null = null
 let currentDeviceId = ''
 /** 已注册的路由元素清理函数集合 */
 const routedCleanups = new Set<() => void>()
+/** 已接入路由的元素（防止同一元素被重复 createMediaElementSource 导致双重播放/回音） */
+const routedElements = new WeakSet<HTMLAudioElement>()
 
 function getCtx(): AudioContext {
   if (!audioCtx) {
@@ -25,6 +27,8 @@ function getCtx(): AudioContext {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     audioCtx = new Ctor()
+    // 立即尝试恢复（suspended 状态下音频会被缓冲，恢复时可能集中播放产生回音）
+    audioCtx.resume().catch(() => {})
   }
   return audioCtx
 }
@@ -55,6 +59,11 @@ async function applyDeviceToCtx(): Promise<void> {
  * 返回清理函数（断开 MediaElementSource）。
  */
 export function routeAudioElement(el: HTMLAudioElement): () => void {
+  // 防止同一元素被重复接入：重复 createMediaElementSource 会抛错或产生双重播放
+  if (routedElements.has(el)) {
+    return () => {}
+  }
+  routedElements.add(el)
   const ctx = getCtx()
   let source: MediaElementAudioSourceNode | null = null
   try {

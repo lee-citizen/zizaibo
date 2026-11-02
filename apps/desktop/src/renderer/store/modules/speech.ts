@@ -230,6 +230,8 @@ export const useSpeechStore = defineStore("speech", () => {
   // ---------- edge-tts 播放（仅 macOS 使用） ----------
   // edge-tts 播放用的 Audio 单例
   let edgeAudio: HTMLAudioElement | null = null;
+  // 播放锁：防止快速连续调用 playEdgeAudio 导致两段音频叠加（回音）
+  let edgePlaying = false;
 
   // ---------- 互动引导状态 ----------
   const guide = ref<GuideConfig>({ ...DEFAULT_GUIDE });
@@ -363,6 +365,7 @@ export const useSpeechStore = defineStore("speech", () => {
       edgeAudio.pause();
       edgeAudio.currentTime = 0;
     }
+    edgePlaying = false;
     isSpeaking.value = false;
   }
 
@@ -395,24 +398,32 @@ export const useSpeechStore = defineStore("speech", () => {
       edgeAudio = new Audio();
       edgeAudio.onended = () => {
         isSpeaking.value = false;
+        edgePlaying = false;
       };
       edgeAudio.onerror = () => {
         isSpeaking.value = false;
+        edgePlaying = false;
         ElMessage.error({ message: "音频播放失败", offset: 40 });
       };
       // 接入统一音频路由（输出设备由 AudioContext.setSinkId 控制）
       routeAudioElement(edgeAudio);
     }
-    // 暂停当前播放；设置新 src 会自动中断旧播放并加载新音频
-    edgeAudio.pause();
+    // 若上一段还在播，先停掉，避免两段叠加产生回音
+    if (edgePlaying) {
+      edgeAudio.pause();
+      edgeAudio.currentTime = 0;
+      edgePlaying = false;
+    }
     edgeAudio.volume = getTtsVolume();
     edgeAudio.src = url;
     try {
+      edgePlaying = true;
       await edgeAudio.play();
     } catch (err) {
       // 播放被新请求中断（AbortError / interrupted）属正常情况，不视为错误
       const name = err instanceof Error ? err.name : "";
       const msg = err instanceof Error ? err.message : String(err);
+      edgePlaying = false;
       if (name === "AbortError" || msg.includes("interrupted")) {
         return;
       }
