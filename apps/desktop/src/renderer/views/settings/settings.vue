@@ -136,7 +136,11 @@ const audioDevices = ref<OutputDevice[]>([]);
 // 持久化 + 实时应用：输出设备切换
 function onOutputDeviceChange(val: string) {
   const id = val || "default";
+  const label =
+    audioDevices.value.find((d) => d.deviceId === id)?.label ||
+    (id === "default" ? "default" : "");
   localStorage.setItem(OUTPUT_DEVICE_KEY, id);
+  localStorage.setItem("audio-output-device-label", label);
   // 通过统一路由立即切换（AudioContext.setSinkId），不重开窗口
   setOutputDevice(id);
   ElMessage.success("输出设备已切换");
@@ -189,6 +193,13 @@ async function refreshDevices() {
       setOutputDevice(validId);
     }
     outputDevice.value = validId;
+
+    // 同步存储设备 label（游戏窗口需要按 label 跨源匹配）
+    const matched = devices.find((d) => d.deviceId === validId);
+    localStorage.setItem(
+      "audio-output-device-label",
+      matched ? matched.label : "default",
+    );
 
     ElMessage.success("设备列表已刷新");
   } catch {

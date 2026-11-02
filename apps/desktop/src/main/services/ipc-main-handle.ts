@@ -7,7 +7,7 @@ import type { IpcImpl, AppContract } from "ipc-contract";
 import { webContentSend } from "./web-content-send";
 import { IsUseSysTitle } from "@main/config/const";
 import { otherWindowConfig } from "@main/config/windows-config";
-import { openGameWindow, updateGameAudio } from "./game-window";
+import { openGameWindow, updateGameAudio, getGameAudioDiagnostics, getGameWindowDevices } from "./game-window";
 import { gameJump } from "./game-jump";
 import { downloadAndInstallUpdate } from "./update-downloader";
 import { getDefaultOutputDeviceName, openSystemMixer, detectVirtualAudioDevice } from "./audio-devices";
@@ -55,6 +55,12 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   updateGameAudio: (_event, args) => {
     return updateGameAudio(args);
+  },
+  getGameAudioState: async () => {
+    return await getGameAudioDiagnostics();
+  },
+  getGameWindowDevices: async () => {
+    return await getGameWindowDevices();
   },
   gameJump: async (_event, args) => {
     return gameJump(args.token, args.gameKey);

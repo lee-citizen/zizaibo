@@ -20,6 +20,7 @@
                 </div>
 
                 <!-- 🔊 播放设备（直接展示） -->
+                <!--
                 <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                     <p class="text-xs text-gray-400 mb-3">🔊 播放设备 · 绿色为当前选中</p>
                     <div v-if="audioDevices.length" class="flex flex-wrap gap-2">
@@ -39,7 +40,7 @@
                         <div v-else>未检测到音频输出设备</div>
                     </div>
                 </div>
-
+                -->
                 <div class="flex items-center gap-4 flex-wrap">
                     <!-- 静音开关 -->
                     <el-checkbox v-model="settings.mute">
@@ -51,6 +52,34 @@
                         <span class="text-sm text-gray-500 whitespace-nowrap">游戏音量</span>
                         <el-slider v-model="settings.volume" :min="0" :max="100" :step="1" :disabled="settings.mute"
                             show-input class="flex-1" />
+                    </div>
+
+                    <!-- 游戏输出设备（使用游戏窗口源内枚举到的设备列表，deviceId 可直接 setSinkId） -->
+                    <div class="flex items-center gap-2" v-if="gameWindowDevices.length">
+                        <span class="text-sm text-gray-500 whitespace-nowrap">游戏输出</span>
+                        <el-select v-model="selectedGameSinkId" size="small" placeholder="选择游戏输出设备" style="width: 200px"
+                            @change="onGameSinkChange">
+                            <el-option v-for="d in gameWindowDevices" :key="d.deviceId" :label="d.label"
+                                :value="d.deviceId" />
+                        </el-select>
+                        <el-button size="small" text @click="refreshGameWindowDevices" :loading="gwDevicesLoading">
+                            刷新
+                        </el-button>
+                    </div>
+
+                    <!-- 游戏音频诊断 -->
+                    <!-- <el-button size="small" :loading="gameDiagLoading" @click="runGameDiag">
+                        游戏音频诊断
+                    </el-button> -->
+
+                    <!-- 诊断结果 -->
+                    <div v-if="gameDiagText" class="w-full">
+                        <div class="flex items-center justify-between mt-2 mb-1">
+                            <span class="text-xs text-gray-500">诊断结果</span>
+                            <el-button size="small" text @click="copyGameDiag">复制</el-button>
+                        </div>
+                        <pre
+                            class="bg-gray-900 text-green-300 text-xs p-3 rounded-lg overflow-auto max-h-72 whitespace-pre-wrap">{{ gameDiagText }}</pre>
                     </div>
 
 
@@ -286,18 +315,40 @@ function scrollToTop() {
 
 // 自动保存设置 + 实时同步到已打开的游戏窗口
 let gameAudioTimer: ReturnType<typeof setTimeout> | undefined
+/** 当场在主窗口枚举设备，按已选 deviceId 找到 label（不依赖 localStorage 是否存过 label） */
+async function resolveDeviceLabel(): Promise<string> {
+    const id = localStorage.getItem('audio-output-device-id') || 'default'
+    if (id === 'default') return 'default'
+    try {
+        // 必须先 getUserMedia 授权，enumerateDevices 才会返回稳定的 deviceId 和真实 label；
+        // 未授权时 deviceId 是临时的，与设置页存的稳定 id 对不上，find 会失败
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            stream.getTracks().forEach((t) => t.stop())
+        } catch {
+            /* 授权失败也继续枚举，至少尝试匹配 */
+        }
+        const list = await navigator.mediaDevices.enumerateDevices()
+        const devices = filterOutputDevices(list)
+        return devices.find((d) => d.deviceId === id)?.label || 'default'
+    } catch {
+        return 'default'
+    }
+}
 watch(settings, (val) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
 
     // 50ms 防抖：拖动滑块时合并连续变化，静音开关同样走这里
     if (gameAudioTimer) clearTimeout(gameAudioTimer)
-    gameAudioTimer = setTimeout(() => {
+    gameAudioTimer = setTimeout(async () => {
         const deviceId = localStorage.getItem('audio-output-device-id') || ''
+        const label = await resolveDeviceLabel()
         ipc.app.updateGameAudio({
             mute: val.mute,
             volume: val.volume / 100,
             sinkDeviceId: deviceId === 'default' ? '' : deviceId,
-        }).catch(() => {})
+            sinkDeviceLabel: label,
+        }).catch(() => { })
     }, 50)
 }, { deep: true })
 
@@ -402,21 +453,29 @@ function openGame(game: Game) {
         background: 'rgba(0, 0, 0, 0.7)',
     })
 
-    // 先走跳转接口拿真实游戏地址
-    ipc.app.gameJump({ token: auth.token, gameKey: game.id })
-        .then((url: string) => {
-            loading.setText('正在加载游戏画面...')
-            return window.ipcBridge.invoke('app:openGameWindow', {
-                url,
-                title: game.name,
-                mute: settings.value.mute,
-                volume: settings.value.volume / 100,
-                sinkDeviceId: sinkDeviceId !== 'default' ? sinkDeviceId : '',
+    // 打开游戏前先在主窗口枚举设备拿到 label（游戏窗口源内按 label 匹配本地 deviceId）
+    resolveDeviceLabel().then((sinkDeviceLabel) => {
+        // 先走跳转接口拿真实游戏地址
+        return ipc.app.gameJump({ token: auth.token, gameKey: game.id })
+            .then((url: string) => {
+                loading.setText('正在加载游戏画面...')
+                return window.ipcBridge.invoke('app:openGameWindow', {
+                    url,
+                    title: game.name,
+                    mute: settings.value.mute,
+                    volume: settings.value.volume / 100,
+                    sinkDeviceId: sinkDeviceId !== 'default' ? sinkDeviceId : '',
+                    sinkDeviceLabel,
+                })
             })
-        })
+    })
         .then(() => {
             // 窗口打开后稍等一下再关闭 loading，让游戏画面开始渲染
-            setTimeout(() => loading.close(), 1500)
+            setTimeout(() => {
+                loading.close()
+                // 游戏窗口就绪后，获取其源内的输出设备列表供大厅页面选择
+                refreshGameWindowDevices()
+            }, 1500)
         })
         .catch((e: Error) => {
             loading.close()
@@ -472,6 +531,54 @@ async function loadGames() {
 // ============ 🔊 播放设备相关 ============
 const audioDevices = ref<AudioDeviceInfo[]>([])
 const audioLoading = ref(false)
+const gameDiagLoading = ref(false)
+const gameDiagText = ref('')
+/** 游戏窗口源内枚举到的输出设备列表（deviceId 可直接用于该窗口 setSinkId） */
+const gameWindowDevices = ref<{ deviceId: string; label: string; isDefault: boolean }[]>([])
+const gwDevicesLoading = ref(false)
+const selectedGameSinkId = ref('')
+
+/** 从游戏窗口获取其源内的输出设备列表 */
+async function refreshGameWindowDevices() {
+    gwDevicesLoading.value = true
+    try {
+        const list = await ipc.app.getGameWindowDevices()
+        gameWindowDevices.value = list
+        if (list.length && !selectedGameSinkId.value) {
+            selectedGameSinkId.value = list[0].deviceId
+        }
+    } catch (e) {
+        console.error('获取游戏窗口设备失败:', e)
+    } finally {
+        gwDevicesLoading.value = false
+    }
+}
+
+/** 在大厅页面切换游戏输出设备（直接传游戏窗口源内的 deviceId） */
+function onGameSinkChange(deviceId: string) {
+    ipc.app.updateGameAudio({ sinkDeviceIdDirect: deviceId }).then((ok) => {
+        if (ok) ElMessage.success('游戏输出设备已切换')
+        else ElMessage.warning('游戏窗口未打开')
+    }).catch(() => { })
+}
+
+async function runGameDiag() {
+    gameDiagLoading.value = true
+    try {
+        gameDiagText.value = await ipc.app.getGameAudioState()
+    } catch (e) {
+        gameDiagText.value = `诊断失败: ${e}`
+    } finally {
+        gameDiagLoading.value = false
+    }
+}
+
+function copyGameDiag() {
+    navigator.clipboard.writeText(gameDiagText.value).then(
+        () => ElMessage.success('已复制'),
+        () => ElMessage.error('复制失败'),
+    )
+}
 
 
 function openSystemMixer() {
@@ -503,6 +610,16 @@ async function loadAudioDevices() {
             isDefault: d.isDefault,
             isSelected: d.deviceId === validId,
         }))
+
+        // 兜底：若 localStorage 里没有设备 label（旧版本未存），按已选 deviceId 补存 label
+        const savedLabel = localStorage.getItem('audio-output-device-label')
+        if (!savedLabel || savedLabel === 'default') {
+            const matched = devices.find(d => d.deviceId === validId)
+            localStorage.setItem(
+                'audio-output-device-label',
+                matched ? matched.label : (validId === 'default' ? 'default' : ''),
+            )
+        }
     } catch (e) {
         console.error('加载音频设备失败:', e)
     } finally {

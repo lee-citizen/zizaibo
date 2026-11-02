@@ -84,6 +84,15 @@ export interface AppContract {
    */
   updateGameAudio(args: GameAudioArgs): boolean;
   /**
+   * 诊断已打开游戏窗口的音频路由状态（注入是否成功、各 AudioContext sinkId、
+   * 媒体元素路由、设备枚举、speaker-selection 权限、setSinkId 探针）
+   */
+  getGameAudioState(): string;
+  /**
+   * 获取游戏窗口源内枚举到的输出设备列表（deviceId 可直接用于该窗口 setSinkId）
+   */
+  getGameWindowDevices(): { deviceId: string; label: string; isDefault: boolean }[];
+  /**
    * 游戏跳转：调用后台 /api/v1/game/jump 接口，返回游戏真实 URL
    * 401 时抛出 'UNAUTHORIZED' 错误
    */
@@ -343,8 +352,12 @@ export interface GameAudioArgs {
   mute?: boolean;
   /** 音量 0~1 */
   volume?: number;
-  /** 音频输出设备 ID（setSinkId），空字符串表示系统默认 */
+  /** 音频输出设备 ID（主窗口源的 id，仅作回退） */
   sinkDeviceId?: string;
+  /** 音频输出设备名称（按 label 跨源匹配，主匹配依据） */
+  sinkDeviceLabel?: string;
+  /** 游戏窗口源内的 deviceId（直接 setSinkId，优先级最高） */
+  sinkDeviceIdDirect?: string;
 }
 
 /** openGameWindow 的载荷 */
@@ -359,4 +372,6 @@ export interface OpenGameWindowArgs {
   volume?: number;
   /** 音频输出设备 ID（setSinkId），不传则用系统默认 */
   sinkDeviceId?: string;
+  /** 音频输出设备名称（游戏窗口内按 label 匹配本地 deviceId） */
+  sinkDeviceLabel?: string;
 }
