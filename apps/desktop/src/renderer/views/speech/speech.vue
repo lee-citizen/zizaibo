@@ -138,7 +138,7 @@
 
         <!-- 选项行 -->
         <div class="flex flex-wrap items-center gap-5 mb-3">
-          <el-checkbox v-model="useVoiceRead">用我的语音朗读</el-checkbox>
+          <!-- <el-checkbox v-model="useVoiceRead">用我的语音朗读</el-checkbox> -->
           <div class="flex items-center gap-2 text-sm text-gray-600">
             <span>播报方式</span>
             <el-select :model-value="speech.voicePlayMode" size="small" style="width: 120px"
@@ -216,8 +216,8 @@
               class="flex items-center gap-3 px-4 py-3 transition-colors"
               :class="index === speech.voiceCurrentIndex ? 'bg-blue-50' : 'hover:bg-gray-50'">
               <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0" :class="index === speech.voiceCurrentIndex && speech.voiceIsPlaying
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-500'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-500'
                 ">
                 {{ index === speech.voiceCurrentIndex && speech.voiceIsPlaying ? "♪" : index + 1 }}
               </span>
