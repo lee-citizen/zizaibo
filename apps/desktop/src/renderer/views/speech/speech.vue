@@ -226,9 +226,9 @@
                 {{ track.name }}
                 <el-tag v-if="track.recorded" size="small" type="warning" class="ml-2">录音</el-tag>
               </span>
-              <el-button size="small" text type="primary" @click="speech.playVoice(index)">
+              <!-- <el-button size="small" text type="primary" @click="speech.playVoice(index)">
                 播放
-              </el-button>
+              </el-button> -->
               <el-button size="small" text type="primary" @click="onRenameVoice(index)">
                 重命名
               </el-button>
