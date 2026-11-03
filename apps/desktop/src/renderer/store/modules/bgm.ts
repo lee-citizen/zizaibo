@@ -262,6 +262,8 @@ export const useBgmStore = defineStore("bgm", () => {
     audio = new Audio();
     // auto：设置 src 后积极缓冲，避免首次 play 因数据未就绪被拒绝而无声
     audio.preload = "auto";
+    // createMediaElementSource 需要媒体元素 crossOrigin=anonymous 才能读取跨域协议的音频流
+    audio.crossOrigin = "anonymous";
     audio.volume = volume.value / 100;
     audio.muted = muted.value;
 

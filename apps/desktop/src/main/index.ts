@@ -112,6 +112,8 @@ function onAppReady() {
             "Content-Length": String(end - start + 1),
             "Content-Range": `bytes ${start}-${end}/${total}`,
             "Accept-Ranges": "bytes",
+            // createMediaElementSource 需要 CORS 头才能读取媒体流，否则静默无声
+            "Access-Control-Allow-Origin": "*",
           },
         });
       }
@@ -124,6 +126,8 @@ function onAppReady() {
         "Content-Type": mime,
         "Content-Length": String(fileStat.size),
         "Accept-Ranges": "bytes",
+        // createMediaElementSource 需要 CORS 头才能读取媒体流，否则静默无声
+        "Access-Control-Allow-Origin": "*",
       },
     });
   });

@@ -396,6 +396,7 @@ export const useSpeechStore = defineStore("speech", () => {
     const url = URL.createObjectURL(blob);
     if (!edgeAudio) {
       edgeAudio = new Audio();
+      edgeAudio.crossOrigin = "anonymous";
       edgeAudio.onended = () => {
         isSpeaking.value = false;
         edgePlaying = false;
@@ -716,6 +717,8 @@ export const useSpeechStore = defineStore("speech", () => {
   function ensureAudio(): HTMLAudioElement {
     if (!audio) {
       audio = new Audio();
+      // createMediaElementSource 需要 crossOrigin=anonymous 才能读取自定义协议的音频流
+      audio.crossOrigin = "anonymous";
       audio.addEventListener("ended", onVoiceEnded);
       audio.addEventListener("play", () => {
         voiceIsPlaying.value = true;
@@ -931,6 +934,8 @@ export const useSpeechStore = defineStore("speech", () => {
   function ensureGuideAudio(): HTMLAudioElement {
     if (!guideAudio) {
       guideAudio = new Audio();
+      // createMediaElementSource 需要 crossOrigin=anonymous 才能读取自定义协议的音频流
+      guideAudio.crossOrigin = "anonymous";
       // 接入统一音频路由
       routeAudioElement(guideAudio);
     }

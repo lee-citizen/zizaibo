@@ -15,11 +15,7 @@
             <p class="text-xs text-gray-400 mt-0.5">设音色、调语速音调</p>
           </div>
           <div class="flex items-center gap-2">
-            <el-button
-              :icon="VideoPlay"
-              @click="onTrialTts"
-              :disabled="ttsText.trim().length === 0"
-            >
+            <el-button :icon="VideoPlay" @click="onTrialTts" :disabled="ttsText.trim().length === 0">
               试听朗读
             </el-button>
             <el-button type="primary" :icon="Check" @click="speech.saveTts"> 保存音色 </el-button>
@@ -30,18 +26,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label class="block text-sm text-gray-600 mb-1.5">TTS 声音</label>
-            <el-select
-              v-model="speech.selectedVoiceURI"
-              class="w-full"
-              placeholder="选择系统声音"
-              filterable
-            >
-              <el-option
-                v-for="v in speech.voices"
-                :key="v.voiceURI"
-                :label="`${v.name}（${v.lang}）`"
-                :value="v.voiceURI"
-              />
+            <el-select v-model="speech.selectedVoiceURI" class="w-full" placeholder="选择系统声音" filterable>
+              <el-option v-for="v in speech.voices" :key="v.voiceURI" :label="`${v.name}（${v.lang}）`"
+                :value="v.voiceURI" />
             </el-select>
             <p class="text-xs text-gray-400 mt-1">
               微软中文神经声音（edge-tts，免费需联网；离线时自动回退系统声音）
@@ -49,12 +36,7 @@
           </div>
           <div>
             <label class="block text-sm text-gray-600 mb-1.5">一键预设</label>
-            <el-select
-              v-model="presetKey"
-              class="w-full"
-              placeholder="选择场景预设"
-              @change="onPresetChange"
-            >
+            <el-select v-model="presetKey" class="w-full" placeholder="选择场景预设" @change="onPresetChange">
               <el-option v-for="p in TTS_PRESETS" :key="p.key" :label="p.label" :value="p.key" />
             </el-select>
             <p class="text-xs text-gray-400 mt-1">点击后自动填充最佳音色、语速、音调</p>
@@ -64,12 +46,7 @@
         <!-- 试听文本 -->
         <div class="mb-4">
           <label class="block text-sm text-gray-600 mb-1.5">试听文本</label>
-          <el-input
-            v-model="ttsText"
-            type="textarea"
-            :rows="2"
-            placeholder="输入一段文字用于试听..."
-          />
+          <el-input v-model="ttsText" type="textarea" :rows="2" placeholder="输入一段文字用于试听..." />
         </div>
 
         <!-- 语速 + 音调 -->
@@ -121,31 +98,17 @@
 
         <!-- 选项行 -->
         <div class="flex flex-wrap items-center gap-5 mb-4">
-          <el-checkbox v-model="randomMode" @change="onRandomModeChange(true)"
-            >随机话术</el-checkbox
-          >
+          <el-checkbox v-model="randomMode" @change="onRandomModeChange(true)">随机话术</el-checkbox>
           <el-checkbox v-model="sequentialMode" @change="onRandomModeChange(false)">
             顺序播放
           </el-checkbox>
           <div class="flex items-center gap-2 text-sm text-gray-600">
             <span>间隔</span>
-            <el-input-number
-              v-model="speech.guide.minInterval"
-              :min="5"
-              :max="speech.guide.maxInterval"
-              size="small"
-              controls-position="right"
-              style="width: 90px"
-            />
+            <el-input-number v-model="speech.guide.minInterval" :min="5" :max="speech.guide.maxInterval" size="small"
+              controls-position="right" style="width: 90px" />
             <span>到</span>
-            <el-input-number
-              v-model="speech.guide.maxInterval"
-              :min="speech.guide.minInterval"
-              :max="3600"
-              size="small"
-              controls-position="right"
-              style="width: 90px"
-            />
+            <el-input-number v-model="speech.guide.maxInterval" :min="speech.guide.minInterval" :max="3600" size="small"
+              controls-position="right" style="width: 90px" />
             <span>秒随机</span>
           </div>
         </div>
@@ -153,12 +116,7 @@
         <!-- 话术编辑 -->
         <div class="mb-4">
           <label class="block text-sm text-gray-600 mb-1.5">引导话术（一行一条）</label>
-          <el-input
-            v-model="guideScriptsText"
-            type="textarea"
-            :rows="5"
-            placeholder="喜欢主播的点个关注哦&#10;想玩的家人扣1"
-          />
+          <el-input v-model="guideScriptsText" type="textarea" :rows="5" placeholder="喜欢主播的点个关注哦&#10;想玩的家人扣1" />
         </div>
 
         <!-- 操作按钮 -->
@@ -183,59 +141,26 @@
           <el-checkbox v-model="useVoiceRead">用我的语音朗读</el-checkbox>
           <div class="flex items-center gap-2 text-sm text-gray-600">
             <span>播报方式</span>
-            <el-select
-              :model-value="speech.voicePlayMode"
-              size="small"
-              style="width: 120px"
-              @change="onVoicePlayModeChange"
-            >
+            <el-select :model-value="speech.voicePlayMode" size="small" style="width: 120px"
+              @change="onVoicePlayModeChange">
               <el-option label="顺序播放" value="sequential" />
               <el-option label="随机播放" value="random" />
               <el-option label="固定播放" value="fixed" />
             </el-select>
           </div>
-          <div
-            v-if="speech.voicePlayMode === 'fixed'"
-            class="flex items-center gap-2 text-sm text-gray-600"
-          >
+          <div v-if="speech.voicePlayMode === 'fixed'" class="flex items-center gap-2 text-sm text-gray-600">
             <span>固定条</span>
-            <el-select
-              v-model="speech.voiceFixedIndex"
-              size="small"
-              style="width: 160px"
-              placeholder="选择一条语音"
-            >
-              <el-option
-                v-for="(t, i) in speech.voiceTracks"
-                :key="t.id"
-                :label="`${i + 1}. ${t.name}`"
-                :value="i"
-              />
+            <el-select v-model="speech.voiceFixedIndex" size="small" style="width: 160px" placeholder="选择一条语音">
+              <el-option v-for="(t, i) in speech.voiceTracks" :key="t.id" :label="`${i + 1}. ${t.name}`" :value="i" />
             </el-select>
           </div>
           <div class="flex items-center gap-2 text-sm text-gray-600">
             <span>间隔</span>
-            <el-input-number
-              v-model="speech.voiceIntervalMin"
-              :min="0"
-              :max="600"
-              :disabled="speech.voiceContinuous"
-              size="small"
-              controls-position="right"
-              style="width: 100px"
-              @change="onVoiceLoopSettingChange"
-            />
+            <el-input-number v-model="speech.voiceIntervalMin" :min="0" :max="600" :disabled="speech.voiceContinuous"
+              size="small" controls-position="right" style="width: 100px" @change="onVoiceLoopSettingChange" />
             <span>到</span>
-            <el-input-number
-              v-model="speech.voiceIntervalMax"
-              :min="0"
-              :max="600"
-              :disabled="speech.voiceContinuous"
-              size="small"
-              controls-position="right"
-              style="width: 100px"
-              @change="onVoiceLoopSettingChange"
-            />
+            <el-input-number v-model="speech.voiceIntervalMax" :min="0" :max="600" :disabled="speech.voiceContinuous"
+              size="small" controls-position="right" style="width: 100px" @change="onVoiceLoopSettingChange" />
             <span>秒</span>
           </div>
           <el-checkbox v-model="speech.voiceContinuous" @change="onVoiceLoopSettingChange">
@@ -252,26 +177,15 @@
           <el-button type="success" :icon="Upload" @click="speech.addUserVoice">
             导入语音
           </el-button>
-          <el-button
-            :type="isRecording ? 'danger' : 'warning'"
-            :icon="isRecording ? VideoPause : Mic"
-            @click="toggleRecording"
-          >
+          <el-button :type="isRecording ? 'danger' : 'warning'" :icon="isRecording ? VideoPause : Mic"
+            @click="toggleRecording">
             {{ isRecording ? "停止录音" : "现场录音" }}
           </el-button>
           <el-button :icon="VideoPlay" @click="speech.toggleVoicePlay"> 试听一条 </el-button>
-          <el-button
-            type="danger"
-            :icon="Delete"
-            :disabled="speech.voiceTracks.length === 0"
-            @click="onClearAllVoices"
-          >
+          <el-button type="danger" :icon="Delete" :disabled="speech.voiceTracks.length === 0" @click="onClearAllVoices">
             全部删除
           </el-button>
-          <span
-            v-if="isRecording"
-            class="inline-flex items-center gap-1.5 text-xs text-red-500 animate-pulse"
-          >
+          <span v-if="isRecording" class="inline-flex items-center gap-1.5 text-xs text-red-500 animate-pulse">
             <span class="w-2 h-2 rounded-full bg-red-500" />
             录音中... {{ recordingSeconds }}s
           </span>
@@ -283,26 +197,12 @@
             <span class="text-sm font-semibold text-gray-700">文字生成语音</span>
             <el-tag size="small" type="info" effect="plain">使用上方音色</el-tag>
           </div>
-          <el-input
-            v-model="genText"
-            type="textarea"
-            :rows="2"
-            placeholder="输入一段文字，用上方选择的音色合成为语音..."
-          />
+          <el-input v-model="genText" type="textarea" :rows="2" placeholder="输入一段文字，用上方选择的音色合成为语音..." />
           <div class="flex flex-wrap items-center gap-2 mt-2">
-            <el-button
-              :icon="VideoPlay"
-              :disabled="genText.trim().length === 0"
-              @click="onPreviewGenerated"
-            >
+            <el-button :icon="VideoPlay" :disabled="genText.trim().length === 0" @click="onPreviewGenerated">
               试听
             </el-button>
-            <el-button
-              type="primary"
-              :icon="Plus"
-              :disabled="genText.trim().length === 0"
-              @click="onSaveGenerated"
-            >
+            <el-button type="primary" :icon="Plus" :disabled="genText.trim().length === 0" @click="onSaveGenerated">
               添加到我的语音
             </el-button>
             <span class="text-xs text-gray-400">在线合成（edge-tts），需联网</span>
@@ -310,33 +210,19 @@
         </div>
 
         <!-- 语音列表 -->
-        <div
-          v-if="speech.voiceTracks.length"
-          class="border border-gray-100 rounded-lg overflow-hidden"
-        >
+        <div v-if="speech.voiceTracks.length" class="border border-gray-100 rounded-lg overflow-hidden">
           <div class="divide-y divide-gray-100">
-            <div
-              v-for="(track, index) in speech.voiceTracks"
-              :key="track.id"
+            <div v-for="(track, index) in speech.voiceTracks" :key="track.id"
               class="flex items-center gap-3 px-4 py-3 transition-colors"
-              :class="index === speech.voiceCurrentIndex ? 'bg-blue-50' : 'hover:bg-gray-50'"
-            >
-              <span
-                class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0"
-                :class="
-                  index === speech.voiceCurrentIndex && speech.voiceIsPlaying
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-500'
-                "
-              >
+              :class="index === speech.voiceCurrentIndex ? 'bg-blue-50' : 'hover:bg-gray-50'">
+              <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0" :class="index === speech.voiceCurrentIndex && speech.voiceIsPlaying
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-500'
+                ">
                 {{ index === speech.voiceCurrentIndex && speech.voiceIsPlaying ? "♪" : index + 1 }}
               </span>
-              <span
-                class="flex-1 truncate text-sm"
-                :class="
-                  index === speech.voiceCurrentIndex ? 'text-blue-600 font-medium' : 'text-gray-700'
-                "
-              >
+              <span class="flex-1 truncate text-sm" :class="index === speech.voiceCurrentIndex ? 'text-blue-600 font-medium' : 'text-gray-700'
+                ">
                 {{ track.name }}
                 <el-tag v-if="track.recorded" size="small" type="warning" class="ml-2">录音</el-tag>
               </span>
@@ -354,22 +240,10 @@
         </div>
 
         <!-- 空状态 -->
-        <div
-          v-else
-          class="px-8 py-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-lg"
-        >
-          <svg
-            class="w-14 h-14 mx-auto mb-3 opacity-40"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-            />
+        <div v-else class="px-8 py-12 text-center text-gray-400 border border-dashed border-gray-200 rounded-lg">
+          <svg class="w-14 h-14 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
           </svg>
           <p>还没有语音，点击「导入语音」或「现场录音」</p>
         </div>
