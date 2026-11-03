@@ -256,9 +256,24 @@ function buildAudioPatchScript(volume: number, sinkDeviceLabel: string) {
             pickerBtn.style.cssText = 'position:fixed;right:8px;bottom:8px;z-index:2147483647;' +
               'width:36px;height:36px;line-height:36px;text-align:center;' +
               'background:rgba(0,0,0,0.6);color:#fff;border-radius:8px;cursor:pointer;' +
-              'font-size:18px;user-select:none;font-family:sans-serif;';
+              'font-size:18px;user-select:none;font-family:sans-serif;' +
+              'opacity:0;transition:opacity 0.2s ease;pointer-events:auto;';
             pickerBtn.title = '选择音频输出设备';
             pickerBtn.addEventListener('click', showDevicePanel);
+            // 只有鼠标移入喇叭所在位置才显示，移出隐藏（直播时观众看不到）
+            pickerBtn.__hideTimer = null;
+            pickerBtn.__show = function () {
+              if (pickerBtn.__hideTimer) { clearTimeout(pickerBtn.__hideTimer); pickerBtn.__hideTimer = null; }
+              pickerBtn.style.opacity = '1';
+            };
+            pickerBtn.__hide = function (withPanel) {
+              pickerBtn.__hideTimer = setTimeout(function () {
+                pickerBtn.style.opacity = '0';
+                if (withPanel && pickerPanel) { pickerPanel.remove(); pickerPanel = null; }
+              }, 200);
+            };
+            pickerBtn.addEventListener('mouseenter', pickerBtn.__show);
+            pickerBtn.addEventListener('mouseleave', function () { pickerBtn.__hide(true); });
             document.documentElement.appendChild(pickerBtn);
           } catch(e) {}
         }
@@ -308,6 +323,11 @@ function buildAudioPatchScript(volume: number, sinkDeviceLabel: string) {
           });
 
           document.documentElement.appendChild(pickerPanel);
+          // 鼠标移入面板时取消隐藏（从喇叭移到面板不会关闭），移出面板时隐藏喇叭+关闭面板
+          if (pickerBtn && pickerBtn.__show) {
+            pickerPanel.addEventListener('mouseenter', pickerBtn.__show);
+            pickerPanel.addEventListener('mouseleave', function () { pickerBtn.__hide(true); });
+          }
           // 点击外部关闭
           setTimeout(function(){
             document.addEventListener('click', function onDoc(e){
