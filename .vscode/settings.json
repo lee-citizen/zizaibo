@@ -40,5 +40,10 @@
   "i18n-ally.displayLanguage": "zh-CN",
   "i18n-ally.translate.engines": ["deepl", "google"],
   "i18n-ally.extract.keygenStyle": "camelCase",
-  "i18n-ally.enabledFrameworks": ["vue"]
+  "i18n-ally.enabledFrameworks": [
+    "vue"
+  ],
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  }
 }

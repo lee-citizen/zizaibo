@@ -116,7 +116,13 @@
         <!-- 话术编辑 -->
         <div class="mb-4">
           <label class="block text-sm text-gray-600 mb-1.5">引导话术（一行一条）</label>
-          <el-input v-model="guideScriptsText" type="textarea" :rows="5" placeholder="喜欢主播的点个关注哦&#10;想玩的家人扣1" />
+          <el-input
+            v-model="guideScriptsText"
+            type="textarea"
+            :rows="5"
+            resize="vertical"
+            placeholder="喜欢主播的点个关注哦&#10;想玩的家人扣1"
+          />
         </div>
 
         <!-- 操作按钮 -->
@@ -283,15 +289,15 @@ const guideEnabled = computed({
   set: (v: boolean) => speech.toggleGuide(v),
 });
 
-// 用换行拼接/拆分话术，绑定到 textarea
-const guideScriptsText = computed({
-  get: () => speech.guide.scripts.join("\n"),
-  set: (val: string) => {
-    speech.guide.scripts = val.split("\n").filter((s) => s.trim().length > 0);
-  },
-});
+// 引导话术文本域：用 ref 直接绑定，避免 computed setter 每次输入都过滤/重算导致换行异常
+const guideScriptsText = ref(speech.guide.scripts.join("\n"));
 
 function onSaveGuide(): void {
+  // 保存时再拆分：按换行切分，去掉空行
+  speech.guide.scripts = guideScriptsText.value
+    .split("\n")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   speech.saveGuide();
 }
 
