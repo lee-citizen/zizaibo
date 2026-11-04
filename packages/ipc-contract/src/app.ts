@@ -219,6 +219,8 @@ export interface DanmakuMsg {
   event: string;
   /** 礼物名称（仅 gift 事件有值，其余为空串） */
   giftName: string;
+  /** 礼物数量（仅 gift 事件有值，其余为 0） */
+  giftCount: number;
 }
 
 /** connectOpenRoom 的载荷 */

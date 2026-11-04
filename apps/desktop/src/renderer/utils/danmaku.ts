@@ -262,8 +262,8 @@ export const DANMAKU_INSTALL_SCRIPT = String.raw`(function () {
       var nm = text.match(/^([^：:\n]{1,30})[：:]/);
       if (nm) user = nm[1].trim();
 
-      // 头像 / 事件类型 / 礼物名：从 React props 里挖 message 对象
-      var avatar = '', event = 'comment', giftName = '';
+      // 头像 / 事件类型 / 礼物名 / 礼物数量：从 React props 里挖 message 对象
+      var avatar = '', event = 'comment', giftName = '', giftCount = 0;
       try {
         var props = reactPropsDeep(node);
         var msgObj = props ? findMessage(props, 0) : null;
@@ -283,8 +283,13 @@ export const DANMAKU_INSTALL_SCRIPT = String.raw`(function () {
           }
           // 昵称兜底
           if (!user && u && u.nickname) user = String(u.nickname);
-          if (event === 'gift' && payload.gift) {
-            giftName = payload.gift.name ? String(payload.gift.name) : '';
+          if (event === 'gift') {
+            if (payload.gift) {
+              giftName = payload.gift.name ? String(payload.gift.name) : '';
+              giftCount = payload.gift.count ? Number(payload.gift.count) : 0;
+            }
+            // 部分版本数量在 payload 顶层
+            if (!giftCount && payload.count) giftCount = Number(payload.count);
           }
         }
       } catch (e) {}
@@ -300,7 +305,8 @@ export const DANMAKU_INSTALL_SCRIPT = String.raw`(function () {
         ts: Date.now(),
         avatar: avatar,
         event: event,
-        giftName: giftName
+        giftName: giftName,
+        giftCount: giftCount
       };
     }
 

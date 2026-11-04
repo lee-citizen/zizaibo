@@ -132,7 +132,111 @@
         </div>
       </div>
 
-      <!-- ========== 模块三：我的语音 ========== -->
+      <!-- ========== 模块三：直播互动 ========== -->
+      <div class="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-800">直播互动</h2>
+            <p class="text-xs text-gray-400 mt-0.5">
+              监听直播事件自动语音播报（与互动引导 / 我的语音互斥）
+            </p>
+          </div>
+          <el-switch
+            v-model="liveEnabled"
+            active-text="开启"
+            inline-prompt
+            @change="onLiveToggle"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- 左：话术编辑 -->
+          <div class="lg:col-span-2 space-y-4">
+            <div>
+              <label class="block text-sm text-gray-600 mb-1.5">
+                进场欢迎
+                <span class="text-xs text-gray-400">（支持 {昵称}）</span>
+              </label>
+              <el-input
+                v-model="liveEntryText"
+                type="textarea"
+                :rows="2"
+                resize="vertical"
+                placeholder="欢迎{昵称}来到直播间"
+              />
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1.5">
+                点赞感谢
+                <span class="text-xs text-gray-400">（支持 {昵称}）</span>
+              </label>
+              <el-input
+                v-model="liveLikeText"
+                type="textarea"
+                :rows="2"
+                resize="vertical"
+                placeholder="感谢{昵称}的点赞"
+              />
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1.5">
+                礼物感谢
+                <span class="text-xs text-gray-400">（支持 {昵称} {数量} {礼物名称}）</span>
+              </label>
+              <el-input
+                v-model="liveGiftText"
+                type="textarea"
+                :rows="2"
+                resize="vertical"
+                placeholder="感谢{昵称}送出的{数量}个{礼物名称}"
+              />
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1.5">
+                关注感谢
+                <span class="text-xs text-gray-400">（支持 {昵称}）</span>
+              </label>
+              <el-input
+                v-model="liveFollowText"
+                type="textarea"
+                :rows="2"
+                resize="vertical"
+                placeholder="感谢{昵称}的关注"
+              />
+            </div>
+
+            <!-- 变量说明 -->
+            <p class="text-xs text-gray-400">
+              变量说明：
+              <code class="px-1 py-0.5 bg-gray-100 rounded">{昵称}</code> 昵称
+              <code class="px-1 py-0.5 bg-gray-100 rounded ml-2">{数量}</code> 礼物数量
+              <code class="px-1 py-0.5 bg-gray-100 rounded ml-2">{礼物名称}</code> 礼物名称
+            </p>
+
+            <!-- 操作按钮 -->
+            <div class="flex flex-wrap items-center gap-2">
+              <el-button type="primary" :icon="Check" @click="onSaveLive"> 保存配置 </el-button>
+              <el-button :icon="RefreshLeft" @click="onRestoreLiveDefault"> 恢复默认 </el-button>
+              <el-button :icon="MagicStick" @click="onRandomizeLive"> 随机预设 </el-button>
+              <el-button :icon="VideoPlay" @click="onTrialLive"> 模拟朗读 </el-button>
+            </div>
+          </div>
+
+          <!-- 右：自动播报开关 -->
+          <div class="space-y-3">
+            <div class="text-sm font-medium text-gray-700 mb-2">自动播报设置</div>
+            <el-checkbox v-model="liveInteraction.autoEntry">观众进场自动语音欢迎</el-checkbox>
+            <el-checkbox v-model="liveInteraction.autoLike">点赞自动感谢</el-checkbox>
+            <el-checkbox v-model="liveInteraction.autoGift">礼物自动感谢</el-checkbox>
+            <el-checkbox v-model="liveInteraction.autoFollow">关注自动感谢</el-checkbox>
+            <p class="text-xs text-gray-400 pt-2 border-t border-gray-100">
+              勾选后对应事件发生时自动用上方音色播报；未勾选则不播报。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 模块四：我的语音 ========== -->
       <div class="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -261,7 +365,7 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount } from "vue";
 import { ElMessageBox } from "element-plus";
-import { VideoPlay, VideoPause, Check, Upload, Mic, Delete, Plus } from "@element-plus/icons-vue";
+import { VideoPlay, VideoPause, Check, Upload, Mic, Delete, Plus, RefreshLeft, MagicStick } from "@element-plus/icons-vue";
 import { useSpeechStore, TTS_PRESETS } from "@renderer/store/modules/speech";
 
 const speech = useSpeechStore();
@@ -316,6 +420,78 @@ const sequentialMode = computed({
 });
 function onRandomModeChange(toRandom: boolean): void {
   speech.guide.random = toRandom;
+}
+
+// ---------- 直播互动 ----------
+const liveInteraction = speech.liveInteraction;
+// 总开关
+const liveEnabled = computed({
+  get: () => liveInteraction.enabled,
+  set: (v: boolean) => speech.toggleLiveInteraction(v),
+});
+// 话术文本域（一行一条）
+const liveEntryText = ref(liveInteraction.entry.join("\n"));
+const liveLikeText = ref(liveInteraction.like.join("\n"));
+const liveGiftText = ref(liveInteraction.gift.join("\n"));
+const liveFollowText = ref(liveInteraction.follow.join("\n"));
+
+function splitLines(text: string): string[] {
+  return text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+function onSaveLive(): void {
+  liveInteraction.entry = splitLines(liveEntryText.value);
+  liveInteraction.like = splitLines(liveLikeText.value);
+  liveInteraction.gift = splitLines(liveGiftText.value);
+  liveInteraction.follow = splitLines(liveFollowText.value);
+  speech.saveLiveInteraction();
+}
+
+function onRestoreLiveDefault(): void {
+  speech.restoreDefaultLiveInteraction();
+  liveEntryText.value = liveInteraction.entry.join("\n");
+  liveLikeText.value = liveInteraction.like.join("\n");
+  liveGiftText.value = liveInteraction.gift.join("\n");
+  liveFollowText.value = liveInteraction.follow.join("\n");
+}
+
+function onRandomizeLive(): void {
+  speech.randomizeLiveInteraction();
+  liveEntryText.value = liveInteraction.entry.join("\n");
+  liveLikeText.value = liveInteraction.like.join("\n");
+  liveGiftText.value = liveInteraction.gift.join("\n");
+  liveFollowText.value = liveInteraction.follow.join("\n");
+}
+
+// 模拟朗读：用示例数据依次触发四种事件
+function onTrialLive(): void {
+  onSaveLive();
+  speech.triggerLiveInteraction("entry", { nickname: "测试观众" });
+  setTimeout(() => speech.triggerLiveInteraction("like", { nickname: "测试观众" }), 2500);
+  setTimeout(
+    () =>
+      speech.triggerLiveInteraction("gift", {
+        nickname: "测试观众",
+        count: 5,
+        giftName: "小心心",
+      }),
+    5000,
+  );
+  setTimeout(
+    () => speech.triggerLiveInteraction("follow", { nickname: "测试观众" }),
+    8000,
+  );
+}
+
+function onLiveToggle(v: boolean): void {
+  // computed setter 已处理互斥，这里仅做提示
+  if (v) {
+    // 保存当前话术
+    onSaveLive();
+  }
 }
 
 // ---------- 我的语音 ----------

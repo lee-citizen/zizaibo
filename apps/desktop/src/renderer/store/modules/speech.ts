@@ -33,6 +33,28 @@ interface GuideConfig {
   scripts: string[];
 }
 
+/** 直播互动配置 */
+interface LiveInteractionConfig {
+  /** 总开关 */
+  enabled: boolean;
+  /** 进场欢迎话术（一行一条，支持 {昵称}） */
+  entry: string[];
+  /** 点赞感谢话术（一行一条，支持 {昵称}） */
+  like: string[];
+  /** 礼物感谢话术（一行一条，支持 {昵称} {数量} {礼物名称}） */
+  gift: string[];
+  /** 关注感谢话术（一行一条，支持 {昵称}） */
+  follow: string[];
+  /** 进场自动语音欢迎 */
+  autoEntry: boolean;
+  /** 点赞自动感谢 */
+  autoLike: boolean;
+  /** 礼物自动感谢 */
+  autoGift: boolean;
+  /** 关注自动感谢 */
+  autoFollow: boolean;
+}
+
 // ===================== 常量 =====================
 
 /** 一键预设：音色 + 语速 + 音调 */
@@ -199,9 +221,85 @@ const DEFAULT_GUIDE: GuideConfig = {
   ],
 };
 
+const DEFAULT_LIVE_INTERACTION: LiveInteractionConfig = {
+  enabled: false,
+  entry: [
+    "欢迎{昵称}来到直播间，希望你玩得开心。",
+    "欢迎{昵称}，感谢来到直播间！",
+  ],
+  like: [
+    "感谢{昵称}的点赞，谢谢支持！",
+    "谢谢{昵称}送来的赞！",
+  ],
+  gift: [
+    "感谢{昵称}送出的{数量}个{礼物名称}，谢谢支持！",
+    "谢谢{昵称}送来的{礼物名称}！",
+  ],
+  follow: [
+    "感谢{昵称}的关注，欢迎常来直播间玩。",
+    "感谢{昵称}关注我们，欢迎留下来一起玩！",
+    "欢迎{昵称}加入，感谢你的关注！",
+  ],
+  autoEntry: true,
+  autoLike: true,
+  autoGift: true,
+  autoFollow: true,
+};
+
+/** 随机预设话术（点击「随机预设」时随机生成一套有差异的话术） */
+const LIVE_INTERACTION_PRESETS: LiveInteractionConfig[] = [
+  {
+    enabled: false,
+    entry: [
+      "欢迎{昵称}宝贝来到直播间，玩得开心哦！",
+      "哈喽{昵称}，欢迎进来坐！",
+    ],
+    like: [
+      "{昵称}的点赞收到啦，爱你哦！",
+      "感谢{昵称}的小心心，继续点赞哦！",
+    ],
+    gift: [
+      "哇！{昵称}送了{数量}个{礼物名称}，太给力了！",
+      "感谢{昵称}的{礼物名称}，主播爱你！",
+    ],
+    follow: [
+      "{昵称}关注了主播，以后常来玩呀！",
+      "欢迎{昵称}加入大家庭，感谢关注！",
+    ],
+    autoEntry: true,
+    autoLike: true,
+    autoGift: true,
+    autoFollow: true,
+  },
+  {
+    enabled: false,
+    entry: [
+      "{昵称}来啦，欢迎欢迎！",
+      "热烈欢迎{昵称}光临直播间！",
+    ],
+    like: [
+      "谢谢{昵称}点赞，你真好！",
+      "{昵称}的赞让主播充满动力！",
+    ],
+    gift: [
+      "感谢{昵称}的{礼物名称}，一共{数量}个，破费了！",
+      "{昵称}太豪了，{数量}个{礼物名称}收到！",
+    ],
+    follow: [
+      "感谢{昵称}点关注，主播会更努力的！",
+      "{昵称}关注成功，欢迎成为家人！",
+    ],
+    autoEntry: true,
+    autoLike: true,
+    autoGift: true,
+    autoFollow: true,
+  },
+];
+
 const TTS_SETTINGS_KEY = "speech-tts-settings";
 const GUIDE_SETTINGS_KEY = "speech-guide-settings";
 const VOICE_SETTINGS_KEY = "speech-voice-settings";
+const LIVE_INTERACTION_SETTINGS_KEY = "speech-live-interaction-settings";
 
 /** Hz 偏移转 speechSynthesis 相对 pitch（0~2）。以 150Hz 为基准频率近似换算。 */
 function hzToPitch(hz: number): number {
@@ -232,6 +330,29 @@ export const useSpeechStore = defineStore("speech", () => {
   let edgeAudio: HTMLAudioElement | null = null;
   // 播放锁：防止快速连续调用 playEdgeAudio 导致两段音频叠加（回音）
   let edgePlaying = false;
+
+  // ---------- TTS 任务队列（直播互动等场景：等当前播完再播下一条） ----------
+  interface TtsTask {
+    text: string;
+    /** 优先级：数字越大越优先。礼物=3, 关注=2, 点赞=1, 进场=0 */
+    priority: number;
+    /** 入队序号，保证同级 FIFO */
+    seq: number;
+  }
+  let ttsQueue: TtsTask[] = [];
+  let queueSeq = 0;
+  let queueProcessing = false;
+
+  /** 只停当前音频，不清队列（队列播放专用） */
+  function stopCurrentAudioOnly(): void {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (edgeAudio) {
+      edgeAudio.pause();
+      edgeAudio.currentTime = 0;
+    }
+    edgePlaying = false;
+    isSpeaking.value = false;
+  }
 
   // ---------- 互动引导状态 ----------
   const guide = ref<GuideConfig>({ ...DEFAULT_GUIDE });
@@ -264,6 +385,9 @@ export const useSpeechStore = defineStore("speech", () => {
   let audio: HTMLAudioElement | null = null;
   // 引导播报专用 Audio 单例（与循环播放分开，二者可同时发声）
   let guideAudio: HTMLAudioElement | null = null;
+
+  // ---------- 直播互动状态 ----------
+  const liveInteraction = ref<LiveInteractionConfig>({ ...DEFAULT_LIVE_INTERACTION });
 
   // ---------- 持久化 ----------
   function loadTtsSettings(): void {
@@ -344,6 +468,33 @@ export const useSpeechStore = defineStore("speech", () => {
     }
   }
 
+  function loadLiveInteractionSettings(): void {
+    try {
+      const raw = localStorage.getItem(LIVE_INTERACTION_SETTINGS_KEY);
+      if (raw) {
+        const s = JSON.parse(raw) as Partial<LiveInteractionConfig>;
+        liveInteraction.value = {
+          ...DEFAULT_LIVE_INTERACTION,
+          ...s,
+          entry: Array.isArray(s.entry) ? s.entry : DEFAULT_LIVE_INTERACTION.entry,
+          like: Array.isArray(s.like) ? s.like : DEFAULT_LIVE_INTERACTION.like,
+          gift: Array.isArray(s.gift) ? s.gift : DEFAULT_LIVE_INTERACTION.gift,
+          follow: Array.isArray(s.follow) ? s.follow : DEFAULT_LIVE_INTERACTION.follow,
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function saveLiveInteractionSettings(): void {
+    try {
+      localStorage.setItem(LIVE_INTERACTION_SETTINGS_KEY, JSON.stringify(liveInteraction.value));
+    } catch {
+      /* ignore */
+    }
+  }
+
   // ---------- TTS ----------
   /** 加载可用语音列表：统一使用 edge-tts 微软神经声音（跨平台，音质一致）。
    *  离线朗读时 speak() 会自动回退到本地 Web Speech。 */
@@ -356,17 +507,12 @@ export const useSpeechStore = defineStore("speech", () => {
     }
   }
 
-  /** 停止所有 TTS 朗读（含 edge-tts 音频） */
+  /** 停止所有 TTS 朗读（含 edge-tts 音频），并清空排队任务 */
   function stopSpeaking(): void {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    if (edgeAudio) {
-      edgeAudio.pause();
-      edgeAudio.currentTime = 0;
-    }
-    edgePlaying = false;
-    isSpeaking.value = false;
+    stopCurrentAudioOnly();
+    // 清空排队中的 TTS 任务
+    ttsQueue = [];
+    queueProcessing = false;
   }
 
   /** 读取用户设置的 TTS 音量（0~1），默认 0.8（80%） */
@@ -454,6 +600,102 @@ export const useSpeechStore = defineStore("speech", () => {
   function speak(text: string): void {
     if (!text || !text.trim()) return;
     void speakWithFallback(text);
+  }
+
+  /**
+   * 排队播放：等当前 TTS 播完再播下一条，不会打断当前播报。
+   * 支持优先级：数字越大越优先。礼物=3, 关注=2, 点赞=1, 进场=0。
+   * 当前有任务在播时，新任务入队等待；同级按 FIFO。
+   */
+  function speakQueued(text: string, priority = 0): void {
+    if (!text || !text.trim()) return;
+    ttsQueue.push({ text, priority, seq: queueSeq++ });
+    // 按优先级降序排序，同级按 seq 升序（FIFO）
+    ttsQueue.sort((a, b) => (b.priority - a.priority) || (a.seq - b.seq));
+    if (!queueProcessing) {
+      void processTtsQueue();
+    }
+  }
+
+  /** 逐条处理队列：每条等播放结束再取下一条 */
+  async function processTtsQueue(): Promise<void> {
+    if (queueProcessing) return;
+    queueProcessing = true;
+    try {
+      while (ttsQueue.length > 0) {
+        const task = ttsQueue.shift()!;
+        if (!task || !task.text) continue;
+        await playTtsAndWait(task.text);
+      }
+    } finally {
+      queueProcessing = false;
+    }
+  }
+
+  /**
+   * 合成并播放一段文本，**等待播放结束**后才 resolve。
+   * 优先 edge-tts，失败回退 Web Speech。
+   * 注意：此函数只停当前音频，不清空队列（由 stopSpeaking 负责清队列）。
+   */
+  function playTtsAndWait(text: string): Promise<void> {
+    return new Promise<void>(async (resolve) => {
+      try {
+        // 只停上一条音频，不清队列
+        stopCurrentAudioOnly();
+        isSpeaking.value = true;
+        const base64 = await synthesizeText(text);
+        const blob = base64ToBlob(base64, "audio/mpeg");
+        const url = URL.createObjectURL(blob);
+
+        if (!edgeAudio) {
+          edgeAudio = new Audio();
+          edgeAudio.crossOrigin = "anonymous";
+          routeAudioElement(edgeAudio);
+        }
+        edgeAudio.volume = getTtsVolume();
+        edgeAudio.src = url;
+
+        // 播放结束后推进队列
+        edgeAudio.onended = () => {
+          isSpeaking.value = false;
+          edgePlaying = false;
+          resolve();
+        };
+        edgeAudio.onerror = () => {
+          isSpeaking.value = false;
+          edgePlaying = false;
+          resolve();
+        };
+
+        edgePlaying = true;
+        await edgeAudio.play();
+      } catch {
+        // edge-tts 失败：回退 Web Speech
+        if (!window.speechSynthesis) {
+          isSpeaking.value = false;
+          resolve();
+          return;
+        }
+        stopCurrentAudioOnly();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = rate.value;
+        u.pitch = hzToPitch(pitchHz.value);
+        u.volume = getTtsVolume();
+        u.lang = "zh-CN";
+        u.onstart = () => {
+          isSpeaking.value = true;
+        };
+        u.onend = () => {
+          isSpeaking.value = false;
+          resolve();
+        };
+        u.onerror = () => {
+          isSpeaking.value = false;
+          resolve();
+        };
+        window.speechSynthesis.speak(u);
+      }
+    });
   }
 
   /** edge-tts 合成失败时回退到系统 Web Speech，保证离线也能出声 */
@@ -883,7 +1125,9 @@ export const useSpeechStore = defineStore("speech", () => {
   function setVoiceEnabled(enabled: boolean): void {
     voiceEnabled.value = enabled;
     if (enabled) {
+      // 与「互动引导」「直播互动」互斥：开启我的语音时自动关闭另外两方
       if (guide.value.enabled) disableGuide();
+      if (liveInteraction.value.enabled) disableLiveInteraction();
       if (voiceTracks.value.length === 0) {
         ElMessage.info({ message: "暂无语音，请先导入或录制语音", offset: 40 });
         return;
@@ -1002,8 +1246,9 @@ export const useSpeechStore = defineStore("speech", () => {
 
   function toggleGuide(enabled: boolean): void {
     if (enabled) {
-      // 与「我的语音」互斥：开启引导时自动关闭我的语音循环
+      // 与「我的语音」「直播互动」互斥：开启引导时自动关闭另外两方
       if (voiceEnabled.value) disableVoiceLoop();
+      if (liveInteraction.value.enabled) disableLiveInteraction();
       guide.value.enabled = true;
       saveGuideSettings();
       startGuide();
@@ -1028,6 +1273,127 @@ export const useSpeechStore = defineStore("speech", () => {
     ElMessage.success({ message: "引导设置已保存", offset: 40 });
   }
 
+  // ---------- 直播互动 ----------
+  /** 把话术模板中的变量替换为真实值 */
+  function fillLiveVars(
+    template: string,
+    vars: { nickname?: string; count?: number; giftName?: string },
+  ): string {
+    return template
+      .replaceAll("{昵称}", vars.nickname || "观众")
+      .replaceAll("{数量}", String(vars.count ?? 1))
+      .replaceAll("{礼物名称}", vars.giftName || "礼物");
+  }
+
+  /** 从某类话术数组中随机取一条并填充变量 */
+  function pickLiveScript(
+    type: "entry" | "like" | "gift" | "follow",
+    vars: { nickname?: string; count?: number; giftName?: string },
+  ): string | null {
+    const scripts = liveInteraction.value[type].filter((s) => s.trim());
+    if (scripts.length === 0) return null;
+    const tpl = scripts[Math.floor(Math.random() * scripts.length)];
+    return fillLiveVars(tpl, vars);
+  }
+
+  /** 触发一次直播互动播报（指定事件类型） */
+  function triggerLiveInteraction(
+    type: "entry" | "like" | "gift" | "follow",
+    vars: { nickname?: string; count?: number; giftName?: string },
+  ): void {
+    const text = pickLiveScript(type, vars);
+    if (!text) return;
+    // 优先级：礼物(3) > 关注(2) > 点赞(1) > 进场(0)
+    // 排队播放：等上一条播完再播下一条，高优先级任务插队到前面
+    const priority = type === "gift" ? 3 : type === "follow" ? 2 : type === "like" ? 1 : 0;
+    speakQueued(text, priority);
+  }
+
+  /** 关闭直播互动 */
+  function disableLiveInteraction(): void {
+    liveInteraction.value.enabled = false;
+    saveLiveInteractionSettings();
+  }
+
+  /**
+   * 开启/关闭直播互动总开关。
+   * 与「互动引导」「我的语音」互斥：开启直播互动时自动关闭另外两方。
+   */
+  function toggleLiveInteraction(enabled: boolean): void {
+    liveInteraction.value.enabled = enabled;
+    saveLiveInteractionSettings();
+    if (enabled) {
+      if (guide.value.enabled) disableGuide();
+      if (voiceEnabled.value) disableVoiceLoop();
+    }
+  }
+
+  /** 保存直播互动配置 */
+  function saveLiveInteraction(): void {
+    saveLiveInteractionSettings();
+    ElMessage.success({ message: "直播互动配置已保存", offset: 40 });
+  }
+
+  /** 恢复默认话术 */
+  function restoreDefaultLiveInteraction(): void {
+    const wasEnabled = liveInteraction.value.enabled;
+    liveInteraction.value = { ...DEFAULT_LIVE_INTERACTION, enabled: wasEnabled };
+    saveLiveInteractionSettings();
+    ElMessage.success({ message: "已恢复默认话术", offset: 40 });
+  }
+
+  /** 随机套用一套预设话术 */
+  function randomizeLiveInteraction(): void {
+    const preset =
+      LIVE_INTERACTION_PRESETS[Math.floor(Math.random() * LIVE_INTERACTION_PRESETS.length)];
+    const wasEnabled = liveInteraction.value.enabled;
+    liveInteraction.value = { ...preset, enabled: wasEnabled };
+    saveLiveInteractionSettings();
+    ElMessage.success({ message: "已套用随机预设", offset: 40 });
+  }
+
+  /**
+   * 处理一条直播弹幕：按事件类型匹配并播报。
+   * 由 connect.vue 在 applyPull 之后调用。
+   */
+  function onLiveDanmaku(msg: {
+    event: string;
+    user?: string;
+    giftName?: string;
+    giftCount?: number;
+  }): void {
+    if (!liveInteraction.value.enabled) return;
+    const nickname = msg.user || "观众";
+    switch (msg.event) {
+      case "entry":
+        if (liveInteraction.value.autoEntry) {
+          triggerLiveInteraction("entry", { nickname });
+        }
+        break;
+      case "like":
+        if (liveInteraction.value.autoLike) {
+          triggerLiveInteraction("like", { nickname });
+        }
+        break;
+      case "gift":
+        if (liveInteraction.value.autoGift) {
+          triggerLiveInteraction("gift", {
+            nickname,
+            count: msg.giftCount ?? 1,
+            giftName: msg.giftName,
+          });
+        }
+        break;
+      case "follow":
+        if (liveInteraction.value.autoFollow) {
+          triggerLiveInteraction("follow", { nickname });
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
   // ---------- 初始化 ----------
   let inited = false;
   async function init(): Promise<void> {
@@ -1036,6 +1402,7 @@ export const useSpeechStore = defineStore("speech", () => {
     loadTtsSettings();
     loadGuideSettings();
     loadVoiceSettings();
+    loadLiveInteractionSettings();
 
     // 加载语音列表（统一使用 edge-tts 神经声音，不依赖系统 speechSynthesis）
     loadVoices();
@@ -1065,6 +1432,7 @@ export const useSpeechStore = defineStore("speech", () => {
     ratePercent,
     loadVoices,
     speak,
+    speakQueued,
     stopSpeaking,
     applyPreset,
     ensureDefaultOutputDevice,
@@ -1077,6 +1445,14 @@ export const useSpeechStore = defineStore("speech", () => {
     triggerGuide,
     toggleGuide,
     saveGuide,
+    // live interaction
+    liveInteraction,
+    toggleLiveInteraction,
+    saveLiveInteraction,
+    restoreDefaultLiveInteraction,
+    randomizeLiveInteraction,
+    triggerLiveInteraction,
+    onLiveDanmaku,
     // voice
     voiceTracks,
     voiceEnabled,

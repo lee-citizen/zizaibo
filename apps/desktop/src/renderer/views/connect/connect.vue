@@ -112,6 +112,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { Link, VideoPlay, SwitchButton } from "@element-plus/icons-vue";
 import { useConnectStore } from "@renderer/store/modules/connect";
 import { useAvatarStore } from "@renderer/store/modules/avatar";
+import { useSpeechStore } from "@renderer/store/modules/speech";
 import {
   DANMAKU_DIAGNOSE_SCRIPT,
   DANMAKU_INSTALL_SCRIPT,
@@ -122,6 +123,7 @@ import { copyToClipboard } from "@renderer/utils/clipboard";
 
 const connect = useConnectStore();
 const avatar = useAvatarStore();
+const speech = useSpeechStore();
 const connecting = ref(false);
 const diagnosing = ref(false);
 /** 弹幕列表容器（用于自动滚动到底部） */
@@ -235,6 +237,10 @@ function startPull(windowId: number): void {
         const fresh = connect.applyPull(res);
         // 新弹幕交给头像打印规则匹配（若打印窗口已打开则自动投递）
         if (fresh.length) avatar.processMessages(fresh);
+        // 新弹幕交给直播互动播报（若已开启则按事件类型自动朗读）
+        if (fresh.length) {
+          for (const msg of fresh) speech.onLiveDanmaku(msg);
+        }
       } else {
         // 会话不存在：直播间窗口被用户手动关闭
         stopPull();
