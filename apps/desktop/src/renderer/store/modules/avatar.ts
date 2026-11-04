@@ -161,8 +161,6 @@ export const useAvatarStore = defineStore("avatar", () => {
             size: rule.size,
           });
           if (ok) printedCount.value += rule.count;
-          // 一条消息只命中第一条匹配的规则
-          break;
         }
       }
     }
