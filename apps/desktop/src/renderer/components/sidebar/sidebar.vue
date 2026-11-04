@@ -19,8 +19,7 @@
                     :class="[
                         route.path === item.path ? 'bg-blue-500/15 text-white' : 'hover:bg-slate-800 hover:text-white',
                         !authorized && item.path !== '/key' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-                    ]"
-                    @click="onNavClick(item)">
+                    ]" @click="onNavClick(item)">
                     <span class="w-1.5 h-5 rounded-full transition-colors"
                         :class="route.path === item.path ? 'bg-blue-400' : 'bg-transparent'" />
                     <span class="text-sm flex-1">{{ item.name }}</span>
@@ -34,8 +33,7 @@
                     :class="[
                         route.path === item.path ? 'bg-blue-500/15 text-white' : 'hover:bg-slate-800 hover:text-white',
                         !authorized && item.path !== '/key' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-                    ]"
-                    @click="onNavClick(item)">
+                    ]" @click="onNavClick(item)">
                     <span class="w-1.5 h-5 rounded-full transition-colors"
                         :class="route.path === item.path ? 'bg-blue-400' : 'bg-transparent'" />
                     <span class="text-sm flex-1">{{ item.name }}</span>
@@ -61,6 +59,7 @@ const navList = [
     { name: '直播主页', path: '/' },
     { name: '连接直播', path: '/connect' },
     { name: '游戏大厅', path: '/games' },
+    { name: '头像打印', path: '/avatar' },
     { name: '背景音乐', path: '/music' },
     { name: '自动报时', path: '/clock' },
     { name: '智能朗读', path: '/speech' },

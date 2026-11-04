@@ -16,6 +16,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@renderer/views/games/games.vue'),
   },
   {
+    path: '/avatar',
+    name: '头像打印',
+    component: () => import('@renderer/views/avatar/avatar.vue'),
+  },
+  {
     path: '/connect',
     name: '连接直播',
     component: () => import('@renderer/views/connect/connect.vue')

@@ -67,6 +67,28 @@ export const DANMAKU_INSTALL_SCRIPT = String.raw`(function () {
       return '';
     }
 
+    /** 从抖音 user 对象提取头像 URL（优先 thumb，兜底 medium/large） */
+    function avatarUrl(u) {
+      if (!u) return '';
+      var sources = [u.avatar_thumb, u.avatar_medium, u.avatar_large, u.avatar];
+      for (var i = 0; i < sources.length; i++) {
+        var s = sources[i];
+        if (s && Array.isArray(s.url_list) && s.url_list.length) return String(s.url_list[0]);
+        if (s && s.url_list && typeof s.url_list === 'string') return String(s.url_list);
+      }
+      return '';
+    }
+
+    /** 根据 webcast 消息 method 分类事件类型 */
+    function classifyEvent(method) {
+      if (!method || typeof method !== 'string') return 'comment';
+      if (method.indexOf('Gift') >= 0) return 'gift';
+      if (method.indexOf('Member') >= 0) return 'entry';
+      if (method.indexOf('Like') >= 0) return 'like';
+      if (method.indexOf('Social') >= 0) return 'follow';
+      return 'comment';
+    }
+
     function fillUser(u, out) {
       if (!isUserObj(u)) return;
       if (!out.uid) {
@@ -239,6 +261,34 @@ export const DANMAKU_INSTALL_SCRIPT = String.raw`(function () {
       var user = '';
       var nm = text.match(/^([^：:\n]{1,30})[：:]/);
       if (nm) user = nm[1].trim();
+
+      // 头像 / 事件类型 / 礼物名：从 React props 里挖 message 对象
+      var avatar = '', event = 'comment', giftName = '';
+      try {
+        var props = reactPropsDeep(node);
+        var msgObj = props ? findMessage(props, 0) : null;
+        if (msgObj) {
+          event = classifyEvent(msgObj.method);
+          var payload = msgObj.payload || {};
+          // 优先级：payload.user（礼物/进场等）→ payload.sender（聊天）
+          var u = payload.user || payload.sender || payload.to_user || null;
+          avatar = avatarUrl(u);
+          // uid 兜底：React props 里的 user 比 DOM href 更全
+          if (!uid && u) {
+            if (u.secUid) uid = String(u.secUid);
+            else if (u.sec_uid) uid = String(u.sec_uid);
+            else if (u.user_id_str) uid = String(u.user_id_str);
+            else if (u.uid) uid = String(u.uid);
+            else if (u.id != null) uid = String(u.id);
+          }
+          // 昵称兜底
+          if (!user && u && u.nickname) user = String(u.nickname);
+          if (event === 'gift' && payload.gift) {
+            giftName = payload.gift.name ? String(payload.gift.name) : '';
+          }
+        }
+      } catch (e) {}
+
       return {
         user: user,
         uid: uid,
@@ -247,7 +297,10 @@ export const DANMAKU_INSTALL_SCRIPT = String.raw`(function () {
         fansImg: '',
         text: text,
         html: html,
-        ts: Date.now()
+        ts: Date.now(),
+        avatar: avatar,
+        event: event,
+        giftName: giftName
       };
     }
 

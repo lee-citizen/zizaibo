@@ -39,6 +39,11 @@ import {
   connectShowRoom,
   connectIsRoomHidden,
 } from "./connect-danmaku";
+import {
+  openPrintWindow,
+  enqueuePrintTask,
+  closePrintWindow,
+} from "./print-window";
 
 import Store from "electron-store";
 
@@ -149,6 +154,16 @@ export const appIpcHandlers: IpcImpl<AppContract> = {
   },
   connectIsRoomHidden: (_event, args) => {
     return connectIsRoomHidden(args);
+  },
+
+  openPrintWindow: (_event, args) => {
+    openPrintWindow(args.mode);
+  },
+  enqueuePrintTask: async (_event, args) => {
+    return await enqueuePrintTask(args);
+  },
+  closePrintWindow: () => {
+    closePrintWindow();
   },
 
   startDownload: (event, downloadUrl) => {

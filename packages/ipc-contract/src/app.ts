@@ -166,6 +166,20 @@ export interface AppContract {
   connectShowRoom(args: ConnectStopArgs): void;
   /** 查询直播间窗口是否已隐藏 */
   connectIsRoomHidden(args: ConnectStopArgs): boolean;
+
+  // ---------- 头像打印（avatar print）----------
+  /** 打开头像打印窗口（2d / 3d），若已打开则关闭旧窗口后按新模式重开 */
+  openPrintWindow(args: { mode: '2d' | '3d' }): void;
+  /** 向打印窗口投递一个打印任务（窗口需已打开） */
+  enqueuePrintTask(args: {
+    nickname: string;
+    avatarUrl: string;
+    event: string;
+    count: number;
+    size: number;
+  }): boolean;
+  /** 关闭打印窗口 */
+  closePrintWindow(): void;
 }
 
 /** deleteUserMusic 的载荷 */
@@ -199,6 +213,12 @@ export interface DanmakuMsg {
   html: string;
   /** 时间戳（ms） */
   ts: number;
+  /** 发送人头像 URL（优先 avatar_thumb，抓不到为空串） */
+  avatar: string;
+  /** 事件类型：entry(进场) / gift(礼物) / comment(评论) / follow(关注) / like(点赞) */
+  event: string;
+  /** 礼物名称（仅 gift 事件有值，其余为空串） */
+  giftName: string;
 }
 
 /** connectOpenRoom 的载荷 */

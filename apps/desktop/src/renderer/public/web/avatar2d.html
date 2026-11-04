@@ -1,0 +1,129 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>虚拟头像打印机 V1.6</title><style>*{box-sizing:border-box}body{margin:0;background:#17191e;color:#fff;font-family:Arial,'Microsoft YaHei',sans-serif}.layout{display:flex;justify-content:center;gap:20px;padding:20px;flex-wrap:wrap}.stage{position:relative;width:450px;height:800px;overflow:hidden;background:repeating-linear-gradient(0deg,#8e5336 0 3px,#a96b46 4px 90px,#75452f 91px 94px);box-shadow:0 10px 35px #0008}.stage:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#0003,transparent 35%,#fff1 70%,#0003)}.printer{position:absolute;top:90px;left:55px;width:340px;height:600px;perspective:900px}.rail{position:absolute;top:80px;width:22px;height:490px;background:linear-gradient(90deg,#080b0d,#4b565e,#101519,#69747a,#080b0d);border:4px solid #1b252b;box-shadow:5px 4px 5px #0006;z-index:4}.rail.left{left:0}.rail.right{right:0}.roller{position:absolute;top:0;left:20px;width:300px;height:94px;background:linear-gradient(#fafafa,#a7b0b8 45%,#eef1f2 55%,#535e64);border:4px solid #222b31;border-radius:12px;z-index:3}.paper{position:absolute;top:94px;left:22px;width:296px;height:580px;background:#f6f4ee;box-shadow:0 8px 18px #0007;overflow:hidden;transform:perspective(850px) rotateX(5deg);transform-origin:top;z-index:2}.paper canvas{width:296px;height:580px}.beam{position:absolute;top:120px;left:6px;width:328px;height:21px;background:linear-gradient(#85929a,#17242b 38%,#66727a 65%,#1c2b32);border:2px solid #111;z-index:6;box-shadow:0 4px 4px #0005}.head{position:absolute;top:101px;left:140px;width:34px;height:75px;z-index:8;transition:none}.head:before{content:'';display:block;height:47px;border:4px solid #9aa6af;background:linear-gradient(90deg,#cad1d5,#f9fbfc,#74828a);border-radius:5px}.head:after{content:'';position:absolute;top:44px;left:14px;width:6px;height:31px;background:linear-gradient(#fff,#747474,#d74635);clip-path:polygon(0 0,100% 0,100% 85%,50% 100%,0 85%)}.housing{position:absolute;top:104px;width:32px;height:51px;background:linear-gradient(90deg,#034eae,#1987ff,#00367e);border:3px solid #1c3b54;border-radius:5px;z-index:7}.housing.a{left:0}.housing.b{right:0}.cable{position:absolute;top:30px;left:65px;width:160px;height:120px;border:9px dashed #c8d2d7;border-bottom:0;border-radius:100px 100px 0 0;z-index:5;transform:rotate(-13deg);pointer-events:none}.panel{width:330px;max-width:95vw;background:#242933;padding:20px;border-radius:14px;height:max-content}button,input,select{padding:10px;border-radius:8px;border:0;margin:5px 0}button{background:#2787fa;color:white;cursor:pointer}button:hover{background:#4a9bff}label{display:block;margin:12px 0}input[type=range]{width:100%}.status{font-size:13px;color:#b9c3ce;line-height:1.8}.caption{position:absolute;bottom:15px;left:0;right:0;text-align:center;text-shadow:0 2px 5px #000;font-weight:bold;font-size:21px;z-index:9}.badge{position:absolute;top:18px;left:16px;background:#0009;border-radius:6px;padding:8px;z-index:10}body.capture .panel,body.capture .badge{display:none}body.capture .layout{padding:0;gap:0}body.capture{background:#17191e}body.capture .stage{width:min(100vw,56.25vh);height:min(177.777vw,100vh)}body.capture .printer{transform:scale(var(--capture-scale,1));transform-origin:top left}body.capture .printer{top:calc(90px * var(--capture-scale,1));left:calc(55px * var(--capture-scale,1))}
+.stage{background:repeating-linear-gradient(2deg,#553323 0px,#75472f 3px,#925d3e 7px,#77472e 10px,#613923 12px,#8e593b 17px);}
+.printer{top:110px;left:45px;width:360px;height:650px;transform:rotate(-4deg);transform-origin:50% 20%}
+.roller{display:none}.paper{top:-95px;left:30px;width:300px;height:800px;background:#fffdf7;transform:none;box-shadow:3px 3px 15px #0007}
+.paper canvas{position:absolute;top:235px;left:0;width:300px;height:587.83783784px}
+
+.rail{top:105px;height:480px;width:24px;border:3px solid #c6c6b7;border-radius:5px;background:linear-gradient(90deg,#ccc9b8,#fbfbec 22%,#242826 25%,#090d0e 66%,#a1a797 70%,#e4e0cb);box-shadow:4px 3px 4px #0007}
+.rail:before,.rail:after{content:'● ●';position:absolute;left:1px;color:#292c29;font-size:9px;background:#d7d5c6;height:18px;width:16px;text-align:center}.rail:before{top:1px}.rail:after{bottom:1px}
+.rail.left{left:2px}.rail.right{right:2px}
+.beam{top:108px;left:12px;width:336px;height:16px;background:linear-gradient(#819095,#101c22 25%,#0b1519 70%,#52707b);border:1px solid #182a31}
+.housing{top:99px;width:22px;height:35px;border-width:2px;background:linear-gradient(90deg,#123e65,#326d95,#09283e)}
+.head{top:84px;width:18px;height:50px}.head:before{height:29px;border-width:2px}.head:after{top:25px;left:7px;width:4px;height:23px}.cable{display:none}
+.caption{top:78px;bottom:auto;left:20px;right:20px;font-size:16px;text-align:left;padding:10px 12px;background:#091112;border:2px solid #b4c6c8;box-shadow:0 0 0 3px #24383e;color:#a3baa8;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{background:#091112;border:2px solid #b4c6c8;color:#a3baa8;top:18px;border-radius:0}
+body.capture .printer{top:calc(110px * var(--capture-scale,1));left:calc(45px * var(--capture-scale,1));transform:scale(var(--capture-scale,1)) rotate(-4deg)}
+
+.stage,body.capture .stage{width:min(450px,calc(100vw - 40px));height:auto;aspect-ratio:9/16;flex:none}
+.scene{position:absolute;top:0;left:0;width:450px;height:800px;transform:scale(var(--scene-scale,1));transform-origin:top left}
+body.capture .stage{width:min(100vw,56.25vh);height:auto;aspect-ratio:9/16}
+body.capture .printer{top:110px;left:45px;transform:rotate(-4deg);transform-origin:50% 20%}
+.dashboard{position:absolute;top:18px;left:18px;right:18px;height:48px;background:#081313;border:2px solid #91a6a7;box-shadow:0 2px 6px #0008;z-index:10;display:flex;align-items:center;padding:5px 10px;gap:12px;color:#d9e8df}
+.dashboard #caption{flex:1;min-width:0;font-size:12px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dashboard div{min-width:66px;text-align:right}.dashboard small{display:block;font-size:10px;color:#a5b9b1}.dashboard b{display:block;font-size:19px;font-variant-numeric:tabular-nums;color:#f4b679}
+</style><div class="layout"><div class="stage"><div class="scene"><div class="printer"><div class="roller"></div><div class="paper"><canvas id="paper" width="592" height="1160"></canvas></div><div class="rail left"></div><div class="rail right"></div><div class="beam" id="beam"></div><div class="housing a" id="ha"></div><div class="housing b" id="hb"></div><div class="cable" id="cable"></div><div class="head" id="head"></div></div><div class="dashboard"><span id="caption">等待打印任务</span><div><small>剩余打印</small><b id="remaining">0</b></div><div><small>今日业绩</small><b id="today">0</b></div></div></div></div><div class="panel"><h2>虚拟头像打印机 V1.6</h2><p>本机事件接入版 · 保留离线演示</p><button id="capture">直播画面（Esc返回）</button><p class="status" id="bridge">离线模式</p><label>昵称 <input id="nickname" placeholder="输入昵称；留空使用图片文件名"></label><label>事件类型 <select id="event"><option value="entry">进场 · 小头像</option><option value="follow">关注 · 大头像</option><option value="gift">礼物 · 大头像优先</option></select></label><label>打印数量 <input id="copies" type="number" min="1" max="100" value="1"></label><label>头像大小 <select id="size"><option value="1">小头像 · 每行3张</option><option value="2">大头像 · 独占一行</option></select></label><label>选择本地头像 <input id="file" type="file" accept="image/*" multiple></label><button id="demo">加入演示头像</button> <button id="batch">模拟9人进场</button><button id="pause">暂停</button> <button id="clear">清空纸张</button><label>单张打印时间 <select id="speed"><option value="200">0.2秒</option><option value="350" selected>0.35秒</option><option value="500">0.5秒</option></select></label><label>打印风格 <select id="style"><option value="color">彩色</option><option value="gray">黑白</option></select></label><div class="status" id="status">队列：0｜状态：空闲</div><p class="status">数量与大小由接口指定；小头像每行3张，大头像独占一行；礼物优先。直播画面可用直播伴侣采集窗口。</p></div></div><script>
+const $=id=>document.getElementById(id),canvas=$('paper'),ctx=canvas.getContext('2d'),W=592,H=1160,R=3;
+canvas.width=W*R;canvas.height=H*R;ctx.scale(R,R);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+let queue=[],current=null,paused=false,epoch=0,seq=0,smallCount=0,rowHeight=0,completed=0;
+
+let serverWaiting=0,todayCount=0;
+const completionOutbox=new Set(),clientRun=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
+let completedReporter=null;
+function localDay(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+let offlineDay=localDay();try{todayCount=Number(localStorage.getItem('avatar-count-'+offlineDay))||0;}catch(_){}
+function recordCompleted(task){if(completedReporter){completionOutbox.add(clientRun+'-'+task.id);completedReporter();}else{const day=localDay();if(day!==offlineDay){offlineDay=day;todayCount=0;}todayCount++;try{localStorage.setItem('avatar-count-'+day,String(todayCount));}catch(_){}}}
+const paperColor='#f6f4ee';
+function refresh(){ $('remaining').textContent=String(queue.length+(current?1:0)+serverWaiting);$('today').textContent=String(todayCount);$('status').textContent=`等待：${queue.length}｜已打印：${completed}｜${paused?'已暂停':current?'打印中':'空闲'}`; }
+const SCALE=300/W, HOME_Y=132;
+function setPos(x,tipY){
+ $('head').style.left=(30+x*SCALE-9)+'px';
+ $('head').style.top=(tipY-48)+'px';
+ $('beam').style.top=(tipY-24)+'px';
+ $('ha').style.top=$('hb').style.top=(tipY-33)+'px';
+}
+function smooth(t){return t*t*(3-2*t);}
+
+function feed(nextRowHeight){if(!rowHeight)return;const saved=document.createElement('canvas');saved.width=W*R;saved.height=H*R;saved.getContext('2d').drawImage(canvas,0,0);ctx.fillStyle=paperColor;ctx.fillRect(0,0,W,H);ctx.drawImage(saved,0,nextRowHeight,W,H);smallCount=0;rowHeight=0;}
+function add(img,name,type='entry',count=1,size=type==='entry'?1:2){
+ count=Number(count);size=Number(size);
+ if(!Number.isInteger(count)||count<1||count>100||![1,2].includes(size))throw Error('数量1～100，大小1或2');
+ const tasks=Array.from({length:count},()=>({img,name:String(name||'观众'),type,size,score:80+Math.floor(Math.random()*21),id:++seq}));
+ if(type==='gift'){const at=queue.findIndex(t=>t.type!=='gift');queue.splice(at<0?queue.length:at,0,...tasks);}else queue.push(...tasks);
+ refresh();pump();return true;
+}
+function card(task,size){const c=document.createElement('canvas');c.width=size*R;c.height=(size+90)*R;c.logicalWidth=size;c.logicalHeight=size+90;const t=c.getContext('2d');t.scale(R,R);t.imageSmoothingEnabled=true;t.imageSmoothingQuality='high';t.fillStyle=paperColor;t.fillRect(0,0,c.width,c.height);const im=task.img,side=Math.min(im.naturalWidth||im.width,im.naturalHeight||im.height);t.save();t.beginPath();t.arc(size/2,size/2,size/2-4,0,Math.PI*2);t.clip();if($('style').value==='gray')t.filter='grayscale(1)';t.drawImage(im,((im.naturalWidth||im.width)-side)/2,((im.naturalHeight||im.height)-side)/2,side,side,0,0,size,size);t.restore();t.fillStyle='#282624';t.font=`600 ${size>200?28:22}px "Microsoft YaHei",sans-serif`;t.textAlign='center';t.textBaseline='middle';let name=task.name;while(t.measureText(name).width>size-8&&name.length>1)name=name.slice(0,-1);if(name!==task.name)name=name.slice(0,-1)+'…';t.fillText(name,size/2,size+23);t.strokeStyle='#b35b52';t.lineWidth=1.5;t.strokeRect(5,size+45,size-10,34);t.fillStyle='#a54940';t.font=`600 ${size>200?24:20}px \"Microsoft YaHei\",sans-serif`;t.fillText('评分 '+task.score,size/2,size+62);return c;}
+function pump(){if(current||paused||!queue.length){refresh();return;}const task=queue.shift(),big=task.size===2,size=big?352:160,nextRowHeight=size+116;if(rowHeight&&(big||smallCount===3||rowHeight!==nextRowHeight))feed(nextRowHeight);const img=card(task,size),x=big?(W-size)/2:20+smallCount*196,y=18;rowHeight=nextRowHeight;current={task,img,x,y,progress:0,duration:Number($('speed').value),last:null,token:epoch};$('caption').textContent=`${({gift:'礼物优先',follow:'关注',entry:'进场',like:'点赞',comment:'评论'})[task.type]||'打印'}：${task.name}`;refresh();requestAnimationFrame(frame);}
+function frame(now){
+ const c=current;if(!c||c.token!==epoch)return;
+ if(c.last!==null&&!paused)c.progress+=now-c.last;c.last=now;
+ if(paused){requestAnimationFrame(frame);return;}
+ const p=Math.min(1,c.progress/c.duration),startY=140+c.y*SCALE;
+ // All ink is drawn at its final location on the same paper canvas.
+ if(p<0.12){const t=smooth(p/0.12);setPos(W/2+(c.x-W/2)*t,HOME_Y+(startY-HOME_Y)*t);}
+ else if(p<0.80){
+  const t=(p-0.12)/0.68,h=Math.floor(c.img.logicalHeight*t);
+  if(h)ctx.drawImage(c.img,0,0,c.img.width,h*R,c.x,c.y,c.img.logicalWidth,h);
+  const scan=t*12,part=scan%1;
+  setPos(c.x+(Math.floor(scan)%2?1-part:part)*c.img.logicalWidth,startY+h*SCALE);
+ }else{
+  if(!c.inkComplete){ctx.drawImage(c.img,c.x,c.y,c.img.logicalWidth,c.img.logicalHeight);c.inkComplete=true;}
+  const t=smooth((p-0.80)/0.20),bottom=startY+c.img.logicalHeight*SCALE;
+  setPos(c.x+(W/2-c.x)*t,bottom+(HOME_Y-bottom)*t);
+ }
+ if(p<1){requestAnimationFrame(frame);return;}
+ setPos(W/2,HOME_Y);completed++;recordCompleted(c.task);if(c.task.size===1)smallCount++;
+ current=null;$('caption').textContent='打印完成：'+c.task.name;refresh();pump();
+}
+$('file').onchange=e=>{const type=$('event').value,nick=$('nickname').value.trim();for(const f of e.target.files){const u=URL.createObjectURL(f),img=new Image();img.onload=()=>{add(img,nick||f.name.replace(/\.[^.]+$/,''),type,Number($('copies').value),Number($('size').value));URL.revokeObjectURL(u);};img.onerror=()=>{URL.revokeObjectURL(u);$('caption').textContent='图片读取失败：'+f.name;};img.src=u;}e.target.value='';};
+function demo(type,name,count=Number($('copies').value),size=Number($('size').value)){const c=document.createElement('canvas');c.width=c.height=390;const t=c.getContext('2d');t.fillStyle=`hsl(${seq*47%360} 48% 82%)`;t.fillRect(0,0,390,390);t.fillStyle='#4e5e75';t.beginPath();t.arc(195,140,70,0,7);t.fill();t.beginPath();t.ellipse(195,340,125,110,0,0,7);t.fill();add(c,name,type,count,size);}
+$('demo').onclick=()=>demo($('event').value,$('nickname').value.trim()||'演示用户'+(seq+1));$('batch').onclick=()=>{for(let i=0;i<9;i++)demo('entry','观众'+(seq+1),1,1);};
+$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'继续':'暂停';if(current)current.last=null;refresh();if(!paused)pump();};
+$('clear').onclick=()=>{epoch++;current=null;queue=[];smallCount=0;rowHeight=0;completed=0;ctx.fillStyle=paperColor;ctx.fillRect(0,0,W,H);$('caption').textContent='等待打印任务';setPos(W/2,HOME_Y);refresh();};
+// Only avatar quality changes: try a larger CDN thumbnail, retain the original as fallback.
+function sharperAvatarUrl(value){
+ try{const u=new URL(value);if(u.protocol==='https:'&&/(^|\.)douyinpic\.com$/.test(u.hostname)&&u.pathname.includes('/aweme/100x100/')){
+ u.pathname=u.pathname.replace('/aweme/100x100/','/aweme/720x720/');return u.href;
+ }}catch(_){}return value;
+}
+function readAvatarImage(url,timeout=5000){return new Promise((resolve,reject)=>{
+ const img=new Image();let timer=setTimeout(()=>finish(Error('头像加载超时')),timeout);
+ function finish(error){clearTimeout(timer);img.onload=null;img.onerror=null;error?reject(error):resolve(img);}
+ img.onload=()=>finish();img.onerror=()=>finish(Error('头像加载失败'));img.src=url;
+});}
+const avatarCache=new Map();
+async function loadSharpAvatar(url){
+ if(avatarCache.has(url))return avatarCache.get(url);
+ const promise=(async()=>{const larger=sharperAvatarUrl(url);if(larger===url)return readAvatarImage(url);
+ const candidates=[url,larger,larger.replace('/720x720/','/300x300/')];
+ const results=await Promise.allSettled(candidates.map((u,i)=>readAvatarImage(u,i===0?5000:1800)));
+ const valid=results.filter(r=>r.status==='fulfilled').map(r=>r.value);
+ if(!valid.length)throw Error('头像加载失败');
+ valid.sort((a,b)=>Math.min(b.naturalWidth,b.naturalHeight)-Math.min(a.naturalWidth,a.naturalHeight));return valid[0];})();
+ avatarCache.set(url,promise);if(avatarCache.size>256)avatarCache.delete(avatarCache.keys().next().value);
+ try{return await promise;}catch(e){avatarCache.delete(url);throw e;}
+}
+// 易语言宿主可在图片准备完成后调用此入口。返回 Promise<boolean>。
+window.enqueuePrint=async({nickname,avatarUrl,event='entry',count=1,size=event==='entry'?1:2})=>{if(!['entry','follow','gift','like','comment'].includes(event))throw Error('不支持的事件');const img=await loadSharpAvatar(avatarUrl);return add(img,nickname,event,count,size);};
+$('clear').click();
+
+const bridge=$('bridge');
+function fitStage(){const stage=document.querySelector('.stage');document.documentElement.style.setProperty('--scene-scale',stage.getBoundingClientRect().width/450);}
+function capture(on){document.body.classList.toggle('capture',on);fitStage();}
+$('capture').onclick=()=>capture(true);addEventListener('keydown',e=>{if(e.key==='Escape')capture(false);});addEventListener('resize',fitStage);fitStage();
+const localToken=location.hash.slice(1);if(localToken)history.replaceState(null,'',location.pathname);
+if(location.protocol==='http:'&&localToken){
+ const seen=new Set();let polling=false;
+ const api=(path,method='GET')=>fetch(path,{method,headers:{'X-Printer-Token':localToken},cache:'no-store'});
+ let reporting=false;
+ async function reportCompletions(){if(reporting)return;reporting=true;try{for(const key of completionOutbox){const r=await api('/api/completed?key='+encodeURIComponent(key),'POST');if(!r.ok)throw Error('统计保存失败');const data=await r.json();todayCount=data.count;completionOutbox.delete(key);}refresh();}catch(_){bridge.textContent='打印统计等待重试';}finally{reporting=false;}}
+ completedReporter=reportCompletions;
+ async function ack(id){const r=await api('/api/ack?id='+id,'POST');if(!r.ok)throw Error('ack');}
+ async function loadEvent(task){return loadSharpAvatar(task.avatarUrl);}
+ async function poll(){if(polling)return;polling=true;try{const response=await api('/api/events');if(!response.ok)throw Error('接口未连接');const tasks=await response.json();serverWaiting=tasks.reduce((n,t)=>n+(seen.has(t.id)?0:Number(t.count??1)),0);refresh();const stats=await api('/api/stats');if(stats.ok){todayCount=(await stats.json()).count;refresh();}tasks.sort((a,b)=>(b.event==='gift')-(a.event==='gift')||a.id-b.id);
+  const batch=tasks.slice(0,24);const images=await Promise.allSettled(batch.map(task=>seen.has(task.id)?Promise.resolve(null):loadEvent(task)));let failed=0;
+  for(let i=0;i<batch.length;i++){const task=batch[i],result=images[i];if(seen.has(task.id)){await ack(task.id);continue;}if(result.status==='rejected'){failed++;serverWaiting=Math.max(0,serverWaiting-Number(task.count??1));refresh();await ack(task.id);continue;}if(!add(result.value,task.nickname,task.event,task.count??1,task.size??(task.event==='entry'?1:2)))break;serverWaiting=Math.max(0,serverWaiting-Number(task.count??1));refresh();seen.add(task.id);if(seen.size>1000)seen.delete(seen.values().next().value);await ack(task.id);}
+  bridge.textContent=failed?'本次有 '+failed+' 张头像读取失败，已跳过':'本机接口已连接｜等待接收直播事件';
+ }catch(e){bridge.textContent='本机接口连接失败，请确认启动程序仍在运行';}finally{polling=false;}}
+ setInterval(poll,150);setInterval(reportCompletions,1000);poll();
+}
+</script></html>

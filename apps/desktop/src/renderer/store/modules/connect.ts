@@ -72,32 +72,35 @@ export const useConnectStore = defineStore("connect", () => {
     ready: boolean;
     lastMsgAt: number;
     emojiMap?: Record<string, string>;
-  }): void {
-    if (!connected.value) return;
+  }): DanmakuMsg[] {
+    if (!connected.value) return [];
     collectorReady.value = res.ready;
     if (res.viewer) viewerText.value = res.viewer;
     if (res.lastMsgAt > lastMsgAt.value) lastMsgAt.value = res.lastMsgAt;
     if (res.emojiMap && Object.keys(res.emojiMap).length) {
       emojiMap.value = { ...emojiMap.value, ...res.emojiMap };
     }
+    const fresh: DanmakuMsg[] = [];
     if (res.msgs.length) {
-      const fresh = res.msgs.filter(
+      const filtered = res.msgs.filter(
         (m) => m && m.text && !messages.value.some((o) => msgKey(o) === msgKey(m)),
       );
       if (paused.value) {
         // 暂停时先暂存，恢复后一次性并入，不丢数据
-        pending.value = [...pending.value, ...fresh].slice(-500);
+        pending.value = [...pending.value, ...filtered].slice(-500);
         pendingCount.value = pending.value.length;
       } else {
         // 聊天式：最新在底部，新消息追加到末尾，保留最近 MAX 条
-        const sorted = [...fresh].sort((a, b) => a.ts - b.ts);
+        const sorted = [...filtered].sort((a, b) => a.ts - b.ts);
         messages.value = [...messages.value, ...sorted].slice(-MAX_MESSAGES);
+        fresh.push(...sorted);
       }
       // 60 秒窗口速率（暂停期间按暂存+已有计算）
       const cutoff = Date.now() - 60000;
       const all = paused.value ? [...pending.value, ...messages.value] : messages.value;
       rate.value = all.filter((m) => m.ts > cutoff).length;
     }
+    return fresh;
   }
 
   function setConnected(v: boolean): void {

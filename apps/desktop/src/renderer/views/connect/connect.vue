@@ -111,6 +111,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Link, VideoPlay, SwitchButton } from "@element-plus/icons-vue";
 import { useConnectStore } from "@renderer/store/modules/connect";
+import { useAvatarStore } from "@renderer/store/modules/avatar";
 import {
   DANMAKU_DIAGNOSE_SCRIPT,
   DANMAKU_INSTALL_SCRIPT,
@@ -120,6 +121,7 @@ import { ipc } from "@renderer/utils/ipcRenderer";
 import { copyToClipboard } from "@renderer/utils/clipboard";
 
 const connect = useConnectStore();
+const avatar = useAvatarStore();
 const connecting = ref(false);
 const diagnosing = ref(false);
 /** 弹幕列表容器（用于自动滚动到底部） */
@@ -230,7 +232,9 @@ function startPull(windowId: number): void {
     try {
       const res = await ipc.app.connectPull({ windowId });
       if (res) {
-        connect.applyPull(res);
+        const fresh = connect.applyPull(res);
+        // 新弹幕交给头像打印规则匹配（若打印窗口已打开则自动投递）
+        if (fresh.length) avatar.processMessages(fresh);
       } else {
         // 会话不存在：直播间窗口被用户手动关闭
         stopPull();
